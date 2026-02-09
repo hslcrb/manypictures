@@ -88,8 +88,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-附录一 算法及源码
-
 
   release:
     name: Create Release / 릴리스 생성
