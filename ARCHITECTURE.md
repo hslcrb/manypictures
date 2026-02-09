@@ -257,21 +257,17 @@ void mp_jpeg_fdct(const i16 input[64], i16 output[64]) {
    void mp_hsv_to_rgb(f32 h, f32 s, f32 v, u8* r, u8* g, u8* b);
    ```
 
-4. **Colorization Network**
+4. **Spectral Projection Colorization**
    ```c
-   typedef struct {
-       f32* weights;
-       u32 layer_sizes[8];
-       u32 num_layers;
-   } mp_colorization_network;
+   void mp_colorization_predict(u8 gray, u8 context[8], u8* r, u8* g, u8* b);
    
-   // Simplified neural network for grayscale → color
-   // Input: gray value + 8 context pixels
-   // Hidden: 32 → 16 neurons
-   // Output: RGB values
+   // High-performance Spectral Projection (v2.2)
+   // Deterministic non-linear mapping using trigonometric functions
+   // Input: gray value + 8 context pixels for variance
+   // Output: Vibrant RGB triplets
    ```
 
-**Complexity**: ~500 lines with neural network approximation
+**Complexity**: ~300 lines of highly optimized math
 
 ### 7. Edit Operations (`operations/edit_ops.c`)
 
@@ -366,6 +362,13 @@ typedef struct mp_history_entry {
 - Restoration to any point
 
 **Complexity**: ~400 lines with binary format parsing
+
+**Zero-Flicker Double Buffering**:
+- **Off-screen Rendering**: All drawing operations occur on an image surface backbuffer. / 모든 그리기 작업은 이미지 서피스 백버퍼에서 수행됩니다.
+- **Flicker Elimination**: No target window clearing during active rendering (Background = None). / 렌더링 중 대상 창을 지우지 않아 깜빡임을 제거합니다.
+- **Blit on Expose**: The backbuffer is blitted to the window surface only when ready. / 준비가 되었을 때만 백버퍼를 창 서피스로 비트 전송(blit)합니다.
+
+**Complexity**: ~600 lines with X11/Cairo integration and resize handling
 
 ### 9. GUI System (`gui/gui.c`)
 

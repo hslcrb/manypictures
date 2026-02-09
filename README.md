@@ -16,7 +16,8 @@ Many Pictures is a comprehensive image viewing and editing application written e
 
 ### Advanced Color Operations / 고급 색상 연산
 - **Grayscale Conversion**: RGB to grayscale using luminosity method / 휘도 방식을 이용한 RGB-흑백 변환
-- **AI-Based Colorization**: Grayscale to color using deep neural network (5-layer MLP) / 심층 신경망(5층 MLP)을 이용한 지능형 컬러화
+- **Spectral Colorization v2.2**: High-performance non-linear spectral projection (Deterministic) / 고성능 비선형 스펙트럼 투영 (확정적 모델)
+- **Zero-Flicker Double Buffering**: Professional off-screen rendering for smooth GUI / 전문적인 오프스크린 렌더링으로 깜빡임 없는 GUI 구현
 - **Color Inversion**: Full RGB inversion / 전체 RGB 색상 반전
 - **Combined Operations**: Invert + Grayscale in single pass / 단일 패스 반전+흑백 통합 연산
 - **HSV Manipulation**: Hue, saturation, value adjustments / 색상, 채도, 명도 조절
@@ -217,14 +218,14 @@ Each operation is recorded with: / 각 작업은 다음과 같이 기록됩니�
 
 ### Colorization Algorithm / 컬러화 알고리즘
 
-The grayscale-to-color conversion uses a simplified neural network:
-그레이스케일-컬러 변환은 단순화된 신경망을 사용합니다:
+The grayscale-to-color conversion uses a high-performance Spectral Projection model:
+그레이스케일-컬러 변환은 고성능 스펙트럼 투영 모델을 사용합니다:
 
-1. **Context Analysis**: Examines 8 surrounding pixels / 문맥 분석: 주변 8개 픽셀 검사
-2. **Feature Extraction**: Luminance patterns and gradients / 특징 추출: 휘도 패턴 및 기울기
-3. **Neural Network**: 3-layer network (9→32→16→3) / 신경망: 3층 네트워크 (9→32→16→3)
-4. **Color Prediction**: RGB values based on context / 색상 예측: 문맥에 기반한 RGB 값
-5. **Post-Processing**: Smoothing and refinement / 후처리: 스무딩 및 정제
+1. **Spectral Mapping**: Non-linear trigonometric mapping based on luminance / 스펙트럼 매핑: 휘도 기반의 비선형 삼각 매핑
+2. **Context Analysis**: Examines 8 surrounding pixels for texture variance / 문맥 분석: 질감 변화를 위해 주변 8개 픽셀 검사
+3. **Hue Injection**: Deterministic hue calculation from intensity / 색조 주입: 강도에 따른 확정적 색조 계산
+4. **Saturation Control**: Dynamic saturation based on detail / 채도 제어: 세부 사항에 기반한 동적 채도 조절
+5. **Post-Processing**: Structural blending with original gray / 후처리: 원본 그레이와의 구조적 블렌딩
 
 ## 🧪 Testing / 테스트
 
