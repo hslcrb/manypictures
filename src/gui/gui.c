@@ -299,15 +299,23 @@ typedef struct {
 
 #define MP_BTN_OPEN_FILE  100
 #define MP_BTN_LANG_TOGGLE 101
+#define MP_BTN_ZOOM_IN     102
+#define MP_BTN_ZOOM_OUT    103
+#define MP_BTN_ZOOM_RESET  104
 
 static const mp_gui_button g_buttons[] = {
     {"Open File", "파일 열기", 0, MP_BTN_OPEN_FILE},
     {"Language", "한/영", 50, MP_BTN_LANG_TOGGLE},
-    {"Grayscale", "흑백 변환", 120, MP_OP_GRAYSCALE},
-    {"Colorize", "컬러화", 170, MP_OP_COLORIZE},
-    {"Invert", "색상 반전", 220, MP_OP_INVERT},
-    {"Flip H", "좌우 반전", 270, MP_OP_FLIP_H},
-    {"Flip V", "상하 반전", 320, MP_OP_FLIP_V}
+    {"Undo", "실행 취소", 100, MP_OP_UNDO},
+    {"Redo", "다시 실행", 140, MP_OP_REDO},
+    {"Zoom In", "확대", 200, MP_BTN_ZOOM_IN},
+    {"Zoom Out", "축소", 240, MP_BTN_ZOOM_OUT},
+    {"Reset", "초기화", 280, MP_BTN_ZOOM_RESET},
+    {"Grayscale", "흑백 변환", 340, MP_OP_GRAYSCALE},
+    {"Colorize", "컬러화", 380, MP_OP_COLORIZE},
+    {"Invert", "색상 반전", 420, MP_OP_INVERT},
+    {"Flip H", "좌우 반전", 460, MP_OP_FLIP_H},
+    {"Flip V", "상하 반전", 500, MP_OP_FLIP_V}
 };
 
 static void mp_gui_draw_sidebar(cairo_t* cr, int h, mp_language_mode mode) {
@@ -346,7 +354,8 @@ static void mp_gui_draw_sidebar(cairo_t* cr, int h, mp_language_mode mode) {
     cairo_stroke(cr);
     
     /* Draw Buttons / 버튼 그리기 */
-    for (int i = 0; i < 7; i++) {
+    int num_buttons = sizeof(g_buttons) / sizeof(g_buttons[0]);
+    for (int i = 0; i < num_buttons; i++) {
         int y = 110 + g_buttons[i].y_offset;
         
         /* Button Background / 버튼 배경 */
@@ -366,9 +375,14 @@ static void mp_gui_draw_sidebar(cairo_t* cr, int h, mp_language_mode mode) {
             cairo_show_text(cr, g_buttons[i].label_kr);
             cairo_select_font_face(cr, "Inter", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD); /* Reset */
         } else {
-            /* Bilingual Mode / 이중 언어 모드 */
-            /* Display EN (space) KR or just EN depending on space. Let's try EN for now to avoid crowding, user can toggle */
-             cairo_show_text(cr, g_buttons[i].label_en);
+            /* Bilingual Mode / 이중 언어 모드 - Show abbreviated both / 양쪽 다 약어로 표시 */
+            cairo_set_font_size(cr, 9);
+            cairo_show_text(cr, g_buttons[i].label_en);
+            cairo_move_to(cr, 40, y + 35);
+            cairo_select_font_face(cr, g_system_font, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+            cairo_show_text(cr, g_buttons[i].label_kr);
+            cairo_set_font_size(cr, 10); /* Reset */
+            cairo_select_font_face(cr, "Inter", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
         }
     }
 }
@@ -395,7 +409,7 @@ static void mp_gui_update_image_surface(mp_application* app) {
     /* Extreme optimization: Unrolling + 32-bit writes / 극한 최적화: 언롤링 + 32비트 쓰기 */
     for (int y = 0; y < h; y++) {
         u8* restrict row = data + y * stride;
-        u8* restrict src_row = src + y * w * 3;
+        u8* restrict src_row = src + y * app->current_image->buffer->stride;
         int x = 0;
         
         #pragma GCC unroll 4
@@ -565,7 +579,8 @@ void mp_gui_run(mp_application* app) {
                     
                     /* Sidebar Hit Testing / 사이드바 히트 테스팅 */
                     if (x >= 20 && x <= 180) {
-                        for (int i = 0; i < 7; i++) {
+                        int num_buttons = sizeof(g_buttons) / sizeof(g_buttons[0]);
+                        for (int i = 0; i < num_buttons; i++) {
                             int btn_y = 110 + g_buttons[i].y_offset;
                             if (y >= btn_y && y <= btn_y + 40) {
                                 /* Clicked button i */
@@ -574,7 +589,7 @@ void mp_gui_run(mp_application* app) {
                                     mp_gui_open_file_dialog_system(app);
                                 } else if (g_buttons[i].op_type == MP_BTN_LANG_TOGGLE) {
                                     app->language_mode = (app->language_mode + 1) % 3;
-                                    mp_fast_printf("[GUI] Language switched to mode %d\n", app->language_mode);
+                                    mp_fast_printf("[GUI] Language switched to mode %d / 언어 모드 %d로 전환됨\n", app->language_mode, app->language_mode);
                                     mp_gui_request_repaint(app);
                                 } else {
                                     mp_app_apply_operation(app, g_buttons[i].op_type);
@@ -583,6 +598,16 @@ void mp_gui_run(mp_application* app) {
                             }
                         }
                     }
+                } else if (ev.xbutton.button == 4) { /* Scroll Up -> Zoom In */
+                    app->fit_to_window = MP_FALSE;
+                    app->zoom_level *= 1.1f;
+                    if (app->zoom_level > 10.0f) app->zoom_level = 10.0f;
+                    mp_gui_request_repaint(app);
+                } else if (ev.xbutton.button == 5) { /* Scroll Down -> Zoom Out */
+                    app->fit_to_window = MP_FALSE;
+                    app->zoom_level /= 1.1f;
+                    if (app->zoom_level < 0.01f) app->zoom_level = 0.01f;
+                    mp_gui_request_repaint(app);
                 }
                 break;
             }
@@ -602,6 +627,20 @@ void mp_gui_run(mp_application* app) {
                         mp_gui_request_repaint(app);
                     } else if (sym == XK_o || sym == XK_O) {
                         mp_gui_open_file_dialog_system(app);
+                    } else if (sym == XK_equal || sym == XK_plus || sym == XK_KP_Add) {
+                        app->fit_to_window = MP_FALSE;
+                        app->zoom_level *= 1.1f;
+                        if (app->zoom_level > 10.0f) app->zoom_level = 10.0f;
+                        mp_gui_request_repaint(app);
+                    } else if (sym == XK_minus || sym == XK_underscore || sym == XK_KP_Subtract) {
+                        app->fit_to_window = MP_FALSE;
+                        app->zoom_level /= 1.1f;
+                        if (app->zoom_level < 0.01f) app->zoom_level = 0.01f;
+                        mp_gui_request_repaint(app);
+                    } else if (sym == XK_0 || sym == XK_KP_0) {
+                        app->fit_to_window = MP_TRUE;
+                        app->zoom_level = 1.0f;
+                        mp_gui_request_repaint(app);
                     }
                 } else {
                     if (sym == XK_Escape || sym == XK_q || sym == XK_Q) quit = MP_TRUE;
@@ -854,6 +893,31 @@ mp_result mp_app_apply_operation(mp_application* app, mp_operation_type op_type)
             mp_fast_printf("Flipping vertically... / 상하 반전 중...\n");
             result = mp_op_flip_vertical(app->current_image);
             break;
+            
+        case MP_OP_UNDO:
+            mp_app_undo(app);
+            return MP_SUCCESS;
+            
+        case MP_OP_REDO:
+            mp_app_redo(app);
+            return MP_SUCCESS;
+            
+        case MP_BTN_ZOOM_IN:
+            app->fit_to_window = MP_FALSE;
+            app->zoom_level *= 1.2f;
+            if (app->zoom_level > 10.0f) app->zoom_level = 10.0f;
+            return MP_SUCCESS;
+            
+        case MP_BTN_ZOOM_OUT:
+            app->fit_to_window = MP_FALSE;
+            app->zoom_level /= 1.2f;
+            if (app->zoom_level < 0.01f) app->zoom_level = 0.01f;
+            return MP_SUCCESS;
+            
+        case MP_BTN_ZOOM_RESET:
+            app->fit_to_window = MP_TRUE;
+            app->zoom_level = 1.0f;
+            return MP_SUCCESS;
             
         default:
             return MP_ERROR_UNSUPPORTED;
