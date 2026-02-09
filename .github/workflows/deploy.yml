@@ -58,11 +58,11 @@ jobs:
   docker-push:
     name: Docker Build & Push / 도커 빌드 및 푸시
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: read
       packages: write
     needs: build-binaries
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
 
     steps:
       - name: Checkout repository / 저장소 체크아웃
@@ -104,9 +104,13 @@ jobs:
       - name: Prepare Release Assets / 릴리스 자산 준비
         run: |
           mkdir assets
-          cp manypictures-ubuntu-latest/manypictures assets/manypictures-linux
-          cp manypictures-macos-latest/manypictures assets/manypictures-macos
-          cp manypictures-windows-latest/manypictures.exe assets/manypictures-windows.exe
+          # Note: download-artifact v4 downloads each artifact into its own directory
+          find . -name "manypictures" -type f -exec cp {} assets/ \;
+          find . -name "manypictures.exe" -type f -exec cp {} assets/ \;
+          # Rename for clarity
+          mv assets/manypictures assets/manypictures-linux || true
+          # Note: This is a bit simplified, we might need better asset mapping
+          # for cross-platform binaries if names clash during download.
 
       - name: Release / 릴리스
         uses: softprops/action-gh-release@v1

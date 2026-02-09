@@ -70,38 +70,28 @@ HEADERS = \
 # Default target / 기본 타겟
 all: $(TARGET)
 
-# Create directories / 디렉토리 생성
-$(OBJ_DIR):
-	@mkdir -p $(OBJ_DIR)/core
-	@mkdir -p $(OBJ_DIR)/formats
-	@mkdir -p $(OBJ_DIR)/codecs
-	@mkdir -p $(OBJ_DIR)/operations
-	@mkdir -p $(OBJ_DIR)/exif
-	@mkdir -p $(OBJ_DIR)/gui
-	@mkdir -p $(OBJ_DIR)/video
-	@mkdir -p $(OBJ_DIR)/utils
-
-$(BIN_DIR):
-	@mkdir -p $(BIN_DIR)
-
 # Compile object files / 오브젝트 파일 컴파일
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(HEADERS) | $(OBJ_DIR)
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(HEADERS)
+	@mkdir -p $(@D)
 	@echo "Compiling $<..."
 	@$(CC) $(CFLAGS) -c $< -o $@
 
 # Link executable / 실행 파일 링크
-$(TARGET): $(OBJECTS) | $(BIN_DIR)
+$(TARGET): $(OBJECTS)
+	@mkdir -p $(BIN_DIR)
 	@echo "Linking $(TARGET)..."
 	@$(CC) $(OBJECTS) $(LDFLAGS) -o $(TARGET)
 	@echo "Build complete: $(TARGET)"
 
 # Debug build / 디버그 빌드
-debug: CFLAGS += $(DEBUG_FLAGS)
-debug: clean $(TARGET)
+debug:
+	$(MAKE) clean
+	$(MAKE) $(TARGET) CFLAGS="$(CFLAGS) $(DEBUG_FLAGS)"
 
 # Release build / 릴리스 빌드
-release: CFLAGS += $(RELEASE_FLAGS)
-release: clean $(TARGET)
+release:
+	$(MAKE) clean
+	$(MAKE) $(TARGET) CFLAGS="$(CFLAGS) $(RELEASE_FLAGS)"
 
 # Clean build artifacts / 빌드 산출물 정리
 clean:
