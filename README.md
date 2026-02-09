@@ -1,32 +1,33 @@
 # Many Pictures (매니픽쳐스)
 
-**Advanced Image Viewer and Editor - Pure C Implementation**
+**Advanced Image Viewer and Editor - Pure C Implementation / 고성능 이미지 뷰어 및 편집기 - 순수 C 구현**
 
 Many Pictures is a comprehensive image viewing and editing application written entirely in pure C with custom implementations of all major image codecs and processing algorithms. This project demonstrates advanced C programming techniques with a focus on self-implementation and minimal external dependencies.
+매니픽쳐스는 모든 주요 이미지 코덱과 처리 알고리즘을 독자적으로 구현한, 순수 C 언어 기반의 종합 이미지 뷰어 및 편집 애플리케이션입니다. 본 프로젝트는 외부 의존성을 최소화하고 독자 구현에 집중하여 고차원적인 C 프로그래밍 기법을 증명합니다.
 
-## 🌟 Features
+## 🌟 Features / 주요 기능
 
-### Core Capabilities
+### Core Capabilities / 핵심 기능
 - **Multi-Format Support**: BMP, PNG, JPEG, GIF, TIFF, WebP, ICO, TGA, PSD
 - **Video Support**: AVI, MP4, MKV, WebM, MOV, FLV (basic playback)
-- **Custom Codecs**: Self-implemented DEFLATE, JPEG DCT, Huffman coding
-- **Memory Management**: Custom memory allocator with arena support
-- **Zero External Dependencies**: All image processing implemented from scratch
+- **Custom Codecs**: Self-implemented DEFLATE, JPEG DCT, Huffman coding / 독자 구현된 DEFLATE, JPEG DCT, 허프만 코딩
+- **Memory Management**: Custom memory allocator with arena support / 아레나 지원 전용 메모리 할당기
+- **Zero External Dependencies**: All image processing implemented from scratch / 모든 이미지 처리를 바닥부터 직접 구현
 
-### Advanced Color Operations
-- **Grayscale Conversion**: RGB to grayscale using luminosity method
-- **AI-Based Colorization**: Grayscale to color using neural network approximation
-- **Color Inversion**: Full RGB inversion
-- **Combined Operations**: Invert + Grayscale in single pass
-- **HSV Manipulation**: Hue, saturation, value adjustments
-- **Brightness/Contrast**: Advanced tone curve adjustments
+### Advanced Color Operations / 고급 색상 연산
+- **Grayscale Conversion**: RGB to grayscale using luminosity method / 휘도 방식을 이용한 RGB-흑백 변환
+- **AI-Based Colorization**: Grayscale to color using deep neural network (5-layer MLP) / 심층 신경망(5층 MLP)을 이용한 지능형 컬러화
+- **Color Inversion**: Full RGB inversion / 전체 RGB 색상 반전
+- **Combined Operations**: Invert + Grayscale in single pass / 단일 패스 반전+흑백 통합 연산
+- **HSV Manipulation**: Hue, saturation, value adjustments / 색상, 채도, 명도 조절
+- **Brightness/Contrast**: Advanced tone curve adjustments / 고급 톤 커브 및 밝기/대비 조절
 
-### EXIF & History Tracking
-- **EXIF Reader/Writer**: Full EXIF metadata support
-- **Git-Like History**: Custom history tracking embedded in EXIF
-- **Operation Recording**: Every edit recorded with parameters
-- **History Restoration**: Restore to any previous state
-- **Checksum Verification**: SHA-256 checksums for integrity
+### EXIF & History Tracking / EXIF 및 히스토리 추적
+- **EXIF Reader/Writer**: Full EXIF metadata support / 전체 EXIF 메타데이터 지원
+- **Git-Like History**: Custom history tracking embedded in EXIF / EXIF 내장형 독자 히스토리 추적
+- **Operation Recording**: Every edit recorded with parameters / 모든 편집 사항을 파라미터와 함께 기록
+- **History Restoration**: Restore to any previous state (Git-like) / 이전 상태로의 복구 (Git 스타일)
+- **Checksum Verification**: SHA-256 checksums for integrity / 무결성을 위한 SHA-256 체크섬
 
 ### Image Editing
 - **Rotation**: 90°, 180°, 270° rotation

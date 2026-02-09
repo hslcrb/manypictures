@@ -1,22 +1,23 @@
-# Many Pictures - Architecture Document
+# Many Pictures - Architecture Document / 매니픽쳐스 아키텍처 설계서
 
-## Overview
+## Overview / 개요
 
 Many Pictures (매니픽쳐스) is a complex, pure C implementation of an advanced image viewer and editor. This document describes the architectural decisions, implementation details, and the intricate web of dependencies that make this project a demonstration of advanced C programming.
+매니픽쳐스(Many Pictures)는 고차원적인 이미지 뷰어 및 편집기를 순수 C 언어로 구현한 정교한 소프트웨어입니다. 본 문서는 아키텍처 결정 사항, 세부 구현 내용, 그리고 이 프로젝트를 고급 C 프로그래밍의 실증 사례로 만드는 복잡한 의존성 구조를 설명합니다.
 
-## Design Philosophy
+## Design Philosophy / 설계 철학
 
-### Pure C Implementation
-- **Zero External Dependencies**: All image codecs implemented from scratch
-- **Self-Contained**: No libpng, libjpeg, or other image libraries
-- **Educational Purpose**: Every algorithm visible and understandable
-- **Maximum Complexity**: Intentionally intricate to demonstrate C capabilities
+### Pure C Implementation / 순수 C 구현
+- **Zero External Dependencies**: All image codecs implemented from scratch / 모든 이미지 코덱을 바닥부터 독자 구현
+- **Self-Contained**: No libpng, libjpeg, or other image libraries / libpng, libjpeg 등 외부 라이브러리 일체 배제
+- **Educational Purpose**: Every algorithm visible and understandable / 모든 알고리즘을 가독성 있고 명확하게 시각화
+- **Maximum Complexity**: Intentionally intricate to demonstrate C capabilities / C 언어의 역량을 증명하기 위한 의도적인 복잡성 추구
 
-### Architectural Principles
-1. **Modular Design**: Clear separation of concerns
-2. **Layered Architecture**: Core → Codecs → Formats → Operations → GUI
-3. **Custom Everything**: Memory management, data structures, algorithms
-4. **Performance-Oriented**: Cache-friendly layouts, minimal allocations
+### Architectural Principles / 아키텍처 원칙
+1. **Modular Design**: Clear separation of concerns / 명확한 관심사 분리 및 모듈화
+2. **Layered Architecture**: Core → Codecs → Formats → Operations → GUI / 계층화된 구조 (코어 → 코덱 → 포맷 → 연산 → GUI)
+3. **Custom Everything**: Memory management, data structures, algorithms / 메모리 관리, 자료구조, 알고리즘 전 영역 독자 설계
+4. **Performance-Oriented**: Cache-friendly layouts, minimal allocations / 캐시 친화적 배치 및 할당 최소화를 통한 성능 지향
 
 ## Module Hierarchy
 
@@ -47,31 +48,31 @@ Many Pictures (매니픽쳐스) is a complex, pure C implementation of an advanc
 └─────────────────────────────────────────────────────────┘
 ```
 
-## Core Components
+## Core Components / 핵심 구성 요소
 
-### 1. Memory Management (`core/memory.c`)
+### 1. Memory Management / 메모리 관리 (`core/memory.c`)
 
-**Purpose**: Custom memory allocator with tracking and arena support
+**Purpose / 목적**: Custom memory allocator with tracking and arena support / 추적 및 아레나 지원 전용 메모리 할당기
 
-**Key Features**:
-- Global allocation tracking
-- Peak memory usage monitoring
-- Memory arenas for temporary allocations
-- Pool-based allocation for frequent objects
-- Leak detection on shutdown
+**Key Features / 주요 특징**:
+- Global allocation tracking / 전역 할당 추적
+- Peak memory usage monitoring / 최대 메모리 사용량 모니터링
+- Memory arenas for temporary allocations / 임시 할당을 위한 메모리 아레나
+- Pool-based allocation for frequent objects / 빈번한 객체 생성을 위한 풀 기반 할당
+- Leak detection on shutdown / 종료 시 메모리 누수 탐지
 
-**Implementation Details**:
+**Implementation Details / 구현 세부 사항**:
 ```c
-// Memory pool structure
+// Memory pool structure / 메모리 풀 구조체
 typedef struct mp_memory_pool {
-    u8* base;           // Base address
-    size_t size;        // Total size
-    size_t used;        // Currently used
-    size_t peak;        // Peak usage
+    u8* base;           // Base address / 기본 주소
+    size_t size;        // Total size / 전체 크기
+    size_t used;        // Currently used / 현재 사용량
+    size_t peak;        // Peak usage / 최대 사용량
     struct mp_memory_pool* next;
 } mp_memory_pool;
 
-// Arena for temporary allocations
+// Arena for temporary allocations / 임시 할당용 아레나
 typedef struct {
     mp_memory_pool* pools;
     size_t pool_size;
@@ -79,25 +80,25 @@ typedef struct {
 } mp_memory_arena;
 ```
 
-**Complexity**: ~200 lines of intricate pointer manipulation
+**Complexity / 복잡성**: ~200 lines of intricate pointer manipulation / 약 200라인의 정교한 포인터 조작
 
-### 2. Image Buffer (`core/image.c`)
+### 2. Image Buffer / 이미지 버퍼 (`core/image.c`)
 
-**Purpose**: Core image representation and manipulation
+**Purpose / 목적**: Core image representation and manipulation / 핵심 이미지 표현 및 조작
 
-**Key Structures**:
+**Key Structures / 주요 구조체**:
 ```c
 typedef struct {
-    u32 width, height;
-    u32 stride;
-    mp_color_format format;
-    u8* data;
-    size_t data_size;
-    mp_bool owns_data;
+    u32 width, height;  // 가로, 세로 크기
+    u32 stride;         // 스트라이드
+    mp_color_format format; // 색상 포맷
+    u8* data;           // 픽셀 데이터
+    size_t data_size;   // 데이터 크기
+    mp_bool owns_data;  // 데이터 소유 여부
 } mp_image_buffer;
 
 typedef struct {
-    mp_image_buffer* buffer;
+    mp_image_buffer* buffer; // 이미지 버퍼
     mp_image_metadata* metadata;
     char* filepath;
     mp_bool modified;
@@ -533,27 +534,35 @@ mp_memory_shutdown(); // Reports any leaks
 - Format conversion
 
 ### Performance Tests
+### Performance Tests / 성능 테스트
 - Large image handling (>100MP)
 - Memory usage profiling
 - Operation timing
 - Codec benchmarks
 
-## Future Enhancements
+## Future Enhancements / 향후 개선 사항
 
-### Planned Features
-1. **Complete Codecs**
+### 1. Performance / 성능
+- **SIMD Optimization**: AVX-512/NEON vectorization for DCT and neural kernels / DCT 및 신경망 커널을 위한 AVX-512/NEON 벡터화
+- **Multi-threading**: Parallel processing for large image blocks / 대용량 이미지 블록을 위한 병렬 처리
+
+### 2. Features / 기능
+- **Advanced Codecs**: HEIF/AVIF support via custom bitstream parsers / 독자 비트스트림 파서를 통한 HEIF/AVIF 지원
+- **Enhanced AI**: Convolutional Neural Networks (CNN) for better spatial colorization / 더 나은 공간별 컬러화를 위한 합성곱 신경망(CNN) 도입
+
+### 3. Complete Codecs / 완전한 코덱
    - Full JPEG progressive
    - GIF animation
    - TIFF multi-page
    - WebP VP8/VP8L
 
-2. **Advanced Operations**
+### 4. Advanced Operations / 고급 작업
    - Content-aware scaling
    - Perspective correction
    - HDR tone mapping
    - Noise reduction
 
-3. **Video Support**
+### 5. Video Support / 비디오 지원
    - Frame extraction
    - Basic playback
    - Thumbnail generation

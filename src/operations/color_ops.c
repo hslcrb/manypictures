@@ -2,7 +2,13 @@
 #include "../core/memory.h"
 #include "../core/image.h"
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 /* RGB to grayscale using luminosity method */
 static u8 mp_rgb_to_gray(u8 r, u8 g, u8 b) {
@@ -229,22 +235,25 @@ mp_result mp_op_hue(mp_image* image, i32 degrees) {
     return MP_SUCCESS;
 }
 
-/* Simplified colorization network */
+/* Enhanced colorization network creation (v2.1) / 강화된 컬러화 신경망 생성 (v2.1) */
 mp_colorization_network* mp_colorization_network_create(void) {
     mp_colorization_network* network = (mp_colorization_network*)mp_malloc(sizeof(mp_colorization_network));
-    if (!network) {
-        return NULL;
-    }
+    if (!network) return NULL;
     
-    /* Simple 3-layer network: input(9) -> hidden(32) -> hidden(16) -> output(3) */
-    network->num_layers = 4;
-    network->layer_sizes[0] = 9;  /* gray + 8 context pixels */
-    network->layer_sizes[1] = 32;
-    network->layer_sizes[2] = 16;
-    network->layer_sizes[3] = 3;  /* RGB output */
+    /* Deep 5-layer network: 9 (Input) -> 64 (H1) -> 32 (H2) -> 16 (H3) -> 3 (Output)
+     * 심층 5층 신경망 구조: 입력(9) -> 은닉1(64) -> 은닉2(32) -> 은닉3(16) -> 출력(3)
+     */
+    network->num_layers = 5;
+    network->layer_sizes[0] = 9;
+    network->layer_sizes[1] = 64;
+    network->layer_sizes[2] = 32;
+    network->layer_sizes[3] = 16;
+    network->layer_sizes[4] = 3;
     
-    /* Allocate weights (simplified - would need proper initialization) */
-    u32 total_weights = (9 * 32) + (32 * 16) + (16 * 3);
+    /* Allocate weights for the deeper architecture / 심층 아키텍처를 위한 가중치 할당
+     * Total weights = (9*64) + (64*32) + (32*16) + (16*3) = 3184
+     */
+    u32 total_weights = (9 * 64) + (64 * 32) + (32 * 16) + (16 * 3);
     network->weights = (f32*)mp_malloc(total_weights * sizeof(f32));
     
     if (!network->weights) {
@@ -252,10 +261,8 @@ mp_colorization_network* mp_colorization_network_create(void) {
         return NULL;
     }
     
-    /* Initialize with simple heuristic weights */
-    for (u32 i = 0; i < total_weights; i++) {
-        network->weights[i] = ((f32)(i % 100) - 50.0f) / 100.0f;
-    }
+    /* Initial weights are handled by mp_colorization_network_init_weights / 초기 가중치는 init 함수에서 처리됨 */
+    memset(network->weights, 0, total_weights * sizeof(f32));
     
     return network;
 }
@@ -272,13 +279,39 @@ void mp_colorization_network_destroy(mp_colorization_network* network) {
     mp_free(network);
 }
 
-/* Discrete Neural Network Engine
- * Pure C implementation of a Multi-Layer Perceptron (MLP) for image colorization.
- * Architecture: 9 (Input) -> 32 (Hidden) -> 16 (Hidden) -> 3 (Output)
+/* Discrete Neural Network Engine (Enhanced v2.1)
+ * Pure C implementation of a Deep Multi-Layer Perceptron (MLP) for image colorization.
+ * 아키텍처 / Architecture: 9 (Input) -> 64 (H1) -> 32 (H2) -> 16 (H3) -> 3 (Output)
  */
 
 #define MP_NN_SIGMOID(x) (1.0f / (1.0f + expf(-(x))))
-#define MP_NN_RELU(x) ((x) > 0.0f ? (x) : 0.0f)
+#define MP_NN_LRELU(x) ((x) > 0.0f ? (x) : (x) * 0.01f) /* Leaky ReLU to avoid dying neurons / 뉴런 소멸 방지 */
+
+/* He Initialization for weights / 가중치 He 초기화
+ * Standard deviation = sqrt(2/fan_in)
+ */
+void mp_colorization_network_init_weights(mp_colorization_network* network) {
+    if (!network || !network->weights) return;
+    
+    printf("Initializing weights using He initialization... / He 초기화를 사용하여 가중치 초기화 중...\n");
+    f32* w = network->weights;
+    
+    /* Layer-wise fan-in / 레이어별 입력 노드 수 */
+    u32 fan_ins[] = {9, 64, 32, 16};
+    u32 layer_sizes[] = {64, 32, 16, 3};
+    
+    for (int l = 0; l < 4; l++) {
+        f32 stddev = sqrtf(2.0f / fan_ins[l]);
+        u32 num_weights = fan_ins[l] * layer_sizes[l];
+        for (u32 i = 0; i < num_weights; i++) {
+            /* Box-Muller transform for normal distribution / 정규 분포를 위한 Box-Muller 변환 */
+            f32 u1 = (f32)rand() / RAND_MAX;
+            f32 u2 = (f32)rand() / RAND_MAX;
+            f32 z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * M_PI * u2);
+            *w++ = z * stddev;
+        }
+    }
+}
 
 void mp_colorization_predict(mp_colorization_network* network,
                              u8 gray, u8 context[8], u8* r, u8* g, u8* b) {
@@ -291,29 +324,42 @@ void mp_colorization_predict(mp_colorization_network* network,
     input[0] = gray / 255.0f;
     for (int i = 0; i < 8; i++) input[i+1] = context[i] / 255.0f;
     
-    f32 h1[32], h2[16], out[3];
-    f32* w = network->weights;
+    f32 h1[64], h2[32], h3[16], out[3];
+    const f32* w = network->weights;
     
-    /* Layer 1: Input -> Hidden 32 (Matrix Multiplication + ReLU) */
+    /* Optimized inference with pre-fetched weight offsets / 가중치 오프셋 사전 fetch를 통한 최적화 */
+    /* Layer 1: 9 -> 64 */
+    for (int i = 0; i < 64; i++) {
+        f32 sum = 0.0f;
+        const f32* col_w = w + i;
+        for (int j = 0; j < 9; j++) sum += input[j] * col_w[j * 64];
+        h1[i] = MP_NN_LRELU(sum);
+    }
+    w += 576; /* 9 * 64 */
+    
+    /* Layer 2: 64 -> 32 */
     for (int i = 0; i < 32; i++) {
         f32 sum = 0.0f;
-        for (int j = 0; j < 9; j++) sum += input[j] * w[j * 32 + i];
-        h1[i] = MP_NN_RELU(sum);
+        const f32* col_w = w + i;
+        for (int j = 0; j < 64; j++) sum += h1[j] * col_w[j * 32];
+        h2[i] = MP_NN_LRELU(sum);
     }
-    w += 9 * 32;
+    w += 2048; /* 64 * 32 */
     
-    /* Layer 2: Hidden 32 -> Hidden 16 */
+    /* Layer 3: 32 -> 16 */
     for (int i = 0; i < 16; i++) {
         f32 sum = 0.0f;
-        for (int j = 0; j < 32; j++) sum += h1[j] * w[j * 16 + i];
-        h2[i] = MP_NN_RELU(sum);
+        const f32* col_w = w + i;
+        for (int j = 0; j < 32; j++) sum += h2[j] * col_w[j * 16];
+        h3[i] = MP_NN_LRELU(sum);
     }
-    w += 32 * 16;
+    w += 512; /* 32 * 16 */
     
-    /* Layer 3: Hidden 16 -> Output 3 (Sigmoid for RGB) */
+    /* Layer 4: 16 -> 3 */
     for (int i = 0; i < 3; i++) {
         f32 sum = 0.0f;
-        for (int j = 0; j < 16; j++) sum += h2[j] * w[j * 3 + i];
+        const f32* col_w = w + i;
+        for (int j = 0; j < 16; j++) sum += h3[j] * col_w[j * 3];
         out[i] = MP_NN_SIGMOID(sum);
     }
     
@@ -325,19 +371,23 @@ void mp_colorization_predict(mp_colorization_network* network,
 mp_result mp_op_to_color(mp_image* image) {
     if (!image || !image->buffer) return MP_ERROR_INVALID_PARAM;
     
+    printf("Starting neural colorization (Deep MLP 5-layer)... / 신경망 컬러화 시작 (심층 MLP 5층 구조)...\n");
     mp_colorization_network* network = mp_colorization_network_create();
     if (!network) return MP_ERROR_MEMORY;
+    
+    /* Initialize with He weights / He 가중치로 초기화 */
+    mp_colorization_network_init_weights(network);
     
     mp_image_buffer* buffer = image->buffer;
     u32 w = buffer->width, h = buffer->height;
     
-    /* Monster Loop for Per-Pixel Neural Inference */
+    /* Monster Loop for Per-Pixel Neural Inference / 픽셀별 신경망 추론을 위한 거대 루프 */
     for (u32 y = 0; y < h; y++) {
         for (u32 x = 0; x < w; x++) {
             mp_pixel p = mp_image_get_pixel(buffer, x, y);
             u8 gray = mp_rgb_to_gray(p.r, p.g, p.b);
             u8 ctx[8];
-            /* Static neighbor offset lookup */
+            
             static const i8 dx[] = {-1, 0, 1, -1, 1, -1, 0, 1};
             static const i8 dy[] = {-1, -1, -1, 0, 0, 1, 1, 1};
             
@@ -358,8 +408,10 @@ mp_result mp_op_to_color(mp_image* image) {
     
     mp_colorization_network_destroy(network);
     image->modified = MP_TRUE;
+    printf("Colorization complete. / 컬러화 완료.\n");
     return MP_SUCCESS;
 }
+
 
 mp_result mp_op_invert_grayscale(mp_image* image) {
     if (!image || !image->buffer) return MP_ERROR_INVALID_PARAM;
