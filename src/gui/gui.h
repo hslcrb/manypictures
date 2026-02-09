@@ -30,6 +30,12 @@ typedef enum {
     MP_LANG_KR     /* Korean Only / 국문 전용 */
 } mp_language_mode;
 
+/* GUI States / GUI 상태 */
+typedef enum {
+    MP_GUI_NORMAL,      /* Image View & Sidebar / 이미지 보기 및 사이드바 */
+    MP_GUI_FILE_SELECT  /* File Selection Overlay / 파일 선택 오버레이 */
+} mp_gui_state;
+
 /* Event types */
 typedef enum {
     MP_EVENT_NONE,
@@ -104,6 +110,12 @@ typedef struct {
     f32 zoom_level;
     i32 scroll_x, scroll_y;
     mp_language_mode language_mode; /* Current language mode / 현재 언어 모드 */
+    
+    /* File Picker State / 파일 선택기 상태 */
+    mp_gui_state state;
+    char** file_list;
+    int file_count;
+    int file_list_scroll;
 } mp_application;
 
 /* Initialize GUI system */
