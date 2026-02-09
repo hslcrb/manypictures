@@ -15,10 +15,18 @@
 #include <fcntl.h>
 #include <errno.h>
 
+
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <cairo/cairo.h>
 #include <cairo/cairo-xlib.h>
+
+/* Forward declarations for Double Buffering / 더블 버퍼링을 위한 전방 선언 */
+static void mp_gui_request_repaint(mp_application* app);
+static void mp_gui_render_to_backbuffer(mp_application* app, int w, int h);
+static void mp_gui_draw_monster_bg(cairo_t* cr, int w, int h);
+
 
 static Display* g_display = NULL;
 static int g_screen = 0;
@@ -95,11 +103,8 @@ static void mp_gui_check_dialog_result(mp_application* app) {
         
         if (strlen(buffer) > 0) {
             mp_app_load_image(app, buffer);
-            /* Force redraw */
-            if (app->main_window) {
-                /* We can't easily force redraw here without XClearArea logic, handled in main loop mostly or explicit call */
-                XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
-            }
+            /* Force redraw using the new flicker-free method / 새로운 깜빡임 방지 방식을 사용하여 강제 다시 그리기 */
+            mp_gui_request_repaint(app);
         }
     }
 
@@ -189,12 +194,23 @@ mp_window* mp_window_create(const char* title, u32 width, u32 height) {
                                                      width, height);
     window->cairo_context = cairo_create((cairo_surface_t*)window->cairo_surface);
     
+    /* Create Back Buffer / 백 버퍼 생성 */
+    window->back_surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
+    window->back_context = cairo_create((cairo_surface_t*)window->back_surface);
+    
+    /* Disable Background Clearing to prevent flickering / 깜빡임 방지를 위해 배경 지우기 비활성화 */
+    XSetWindowAttributes swa;
+    swa.background_pixmap = None;
+    XChangeWindowAttributes(g_display, window->x_window, CWBackPixmap, &swa);
+    
     return window;
 }
 
 void mp_window_destroy(mp_window* window) {
     if (!window) return;
     
+    if (window->back_context) cairo_destroy((cairo_t*)window->back_context);
+    if (window->back_surface) cairo_surface_destroy((cairo_surface_t*)window->back_surface);
     if (window->cairo_context) cairo_destroy((cairo_t*)window->cairo_context);
     if (window->cairo_surface) cairo_surface_destroy((cairo_surface_t*)window->cairo_surface);
     if (window->x_window) XDestroyWindow(g_display, window->x_window);
@@ -413,6 +429,28 @@ static void mp_gui_draw_monster_bg(cairo_t* cr, int w, int h) {
     cairo_show_text(cr, "Many Pictures Monster");
 }
 
+static void mp_gui_render_to_backbuffer(mp_application* app, int w, int h) {
+    if (!app || !app->main_window || !app->main_window->back_context) return;
+    cairo_t* cr = (cairo_t*)app->main_window->back_context;
+    
+    /* Draw to off-screen buffer / 오프스크린 버퍼에 그리기 */
+    mp_gui_draw_monster_bg(cr, w, h);
+    mp_gui_draw_sidebar(cr, h, app->language_mode);
+    if (app->current_image) {
+        mp_gui_draw_image(cr, app->current_image, w, h);
+    }
+}
+
+static void mp_gui_request_repaint(mp_application* app) {
+    if (!app || !app->main_window) return;
+    XWindowAttributes wa;
+    XGetWindowAttributes(g_display, app->main_window->x_window, &wa);
+    mp_gui_render_to_backbuffer(app, wa.width, wa.height);
+    
+    /* Trigger Expose without clearing (background is None) / 지우지 않고 Expose 트리거 (배경이 None임) */
+    XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
+}
+
 void mp_gui_run(mp_application* app) {
     if (!g_display || !app) return;
     
@@ -420,8 +458,13 @@ void mp_gui_run(mp_application* app) {
     XEvent ev;
     mp_bool quit = MP_FALSE;
     
-    /* Allow mouse events / 마우스 이벤트 허용 */
-    XSelectInput(g_display, app->main_window->x_window, ExposureMask | KeyPressMask | ButtonPressMask | StructureNotifyMask);
+    /* Allow mouse and resize events / 마우스 및 크기 조정 이벤트 허용 */
+    XSelectInput(g_display, app->main_window->x_window, ExposureMask | KeyPressMask | ButtonPressMask | StructureNotifyMask | SubstructureNotifyMask);
+
+    /* Initial render */
+    XWindowAttributes wa;
+    XGetWindowAttributes(g_display, app->main_window->x_window, &wa);
+    mp_gui_render_to_backbuffer(app, wa.width, wa.height);
 
     /* Init blocking state */
     app->dialog_fd = -1;
@@ -432,26 +475,30 @@ void mp_gui_run(mp_application* app) {
             XNextEvent(g_display, &ev);
         
         switch (ev.type) {
-            case Expose: {
-                XWindowAttributes wa;
-                XGetWindowAttributes(g_display, ev.xexpose.window, &wa);
-                
-                cairo_surface_t* surface = cairo_xlib_surface_create(g_display, ev.xexpose.window, 
-                                                                    DefaultVisual(g_display, g_screen), 
-                                                                    wa.width, wa.height);
-                cairo_t* cr = cairo_create(surface);
-                
-                mp_gui_draw_monster_bg(cr, wa.width, wa.height);
-                mp_gui_draw_sidebar(cr, wa.height, app->language_mode);
-                
-                if (app->current_image) {
-                    mp_gui_draw_image(cr, app->current_image, wa.width, wa.height);
+            case ConfigureNotify: {
+                int nw = ev.xconfigure.width;
+                int nh = ev.xconfigure.height;
+                /* Resize main Cairo surface and backbuffer / 메인 Cairo 서피스 및 백버퍼 크기 조정 */
+                if (app->main_window->cairo_surface) {
+                    cairo_xlib_surface_set_size((cairo_surface_t*)app->main_window->cairo_surface, nw, nh);
                 }
+                if (app->main_window->back_surface) {
+                    cairo_destroy((cairo_t*)app->main_window->back_context);
+                    cairo_surface_destroy((cairo_surface_t*)app->main_window->back_surface);
+                    app->main_window->back_surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, nw, nh);
+                    app->main_window->back_context = cairo_create((cairo_surface_t*)app->main_window->back_surface);
+                    mp_gui_render_to_backbuffer(app, nw, nh);
+                }
+                break;
+            }
+            case Expose: {
+                if (ev.xexpose.count > 0) break;
                 
-
-                
-                cairo_destroy(cr);
-                cairo_surface_destroy(surface);
+                if (app->main_window && app->main_window->cairo_context && app->main_window->back_surface) {
+                    cairo_t* cr = (cairo_t*)app->main_window->cairo_context;
+                    cairo_set_source_surface(cr, (cairo_surface_t*)app->main_window->back_surface, 0, 0);
+                    cairo_paint(cr);
+                }
                 break;
             }
             case ButtonPress: {
@@ -468,16 +515,13 @@ void mp_gui_run(mp_application* app) {
                                 if (g_buttons[i].op_type == MP_BTN_OPEN_FILE) {
                                     /* Invoke System File Dialog / 시스템 파일 대화 상자 호출 */
                                     mp_gui_open_file_dialog_system(app);
-                                    
-                                    /* Force redraw after dialog returns / 대화 상자 반환 후 강제 다시 그리기 */
-                                    XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
                                 } else if (g_buttons[i].op_type == MP_BTN_LANG_TOGGLE) {
                                     app->language_mode = (app->language_mode + 1) % 3;
                                     mp_fast_printf("[GUI] Language switched to mode %d\n", app->language_mode);
-                                    XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
+                                    mp_gui_request_repaint(app);
                                 } else {
                                     mp_app_apply_operation(app, g_buttons[i].op_type);
-                                    XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
+                                    mp_gui_request_repaint(app);
                                 }
                             }
                         }
@@ -495,13 +539,12 @@ void mp_gui_run(mp_application* app) {
                     if (sym == XK_z || sym == XK_Z) {
                         if (shift) mp_app_redo(app);
                         else mp_app_undo(app);
-                        XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
+                        mp_gui_request_repaint(app);
                     } else if (sym == XK_y || sym == XK_Y) {
                         mp_app_redo(app);
-                        XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
+                        mp_gui_request_repaint(app);
                     } else if (sym == XK_o || sym == XK_O) {
                         mp_gui_open_file_dialog_system(app);
-                        XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
                     }
                 } else {
                     if (sym == XK_Escape || sym == XK_q || sym == XK_Q) quit = MP_TRUE;

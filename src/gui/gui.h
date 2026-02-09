@@ -88,8 +88,10 @@ struct mp_window {
     /* Native handles / 네이티브 핸들 */
     void* x_display;
     unsigned long x_window;
-    void* cairo_surface;
-    void* cairo_context;
+    void* cairo_surface; /* Window surface */
+    void* cairo_context; /* Window context */
+    void* back_surface;  /* Off-screen backbuffer */
+    void* back_context;  /* Off-screen context */
 };
 
 /* Application structure */

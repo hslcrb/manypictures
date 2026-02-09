@@ -61,9 +61,11 @@ This software has reached "Monster" grade completion, proving structural aesthet
 - [x] 전역 지침 및 한영 병기 최종 정착 / Final Branding & Bilingual Fixation
     - [x] 전 소스 코드(`src/`) 한영 병기 주석 전수 감사 및 수정 / Audit & fix all KR/EN comments in `src/`
     - [x] `recycle_trash/` 폴더 내 'Trash Archive' 수립 / Establish 'Trash Archive' in `recycle_trash/`
-- [x] 최종 검증 및 정복 선언 / Final Verification & Domination Declaration
-    - [x] `make clean && make` 무에러 빌드 유지 / Maintain error-free build
-    - [x] `[MUHAN_RELOOP: DOMINATED]` 선언 및 최종 푸시 / Declare domination and final push
+- [x] 최종 검증 및 정복 선언 / Final Verification
+- [x] Monster Spectral Colorization v2.2 / 괴물급 스펙트럼 컬러화 v2.2
+- [x] Undo/Redo System & Hotkeys / 실행 취소/다시 실행 시스템 및 단축키
+- [x] Zero-Flicker Double Buffering / 제로 플리커 더블 버퍼링 (DOMINATED)
+- [x] `[MUHAN_RELOOP: DOMINATED]` 선언 및 최종 푸시 / Declare domination and final push
 
 ---
 ### [2026-02-09 20:46 KST] [MUHAN_RELOOP: ENGAGED]
