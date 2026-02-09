@@ -77,6 +77,12 @@ struct mp_window {
     char* title;
     mp_bool resizable;
     mp_bool maximized;
+    
+    /* Native handles / 네이티브 핸들 */
+    void* x_display;
+    unsigned long x_window;
+    void* cairo_surface;
+    void* cairo_context;
 };
 
 /* Application structure */
@@ -125,8 +131,8 @@ void mp_widget_set_size(mp_widget* widget, u32 width, u32 height);
 /* Set widget event callback */
 void mp_widget_set_callback(mp_widget* widget, mp_event_callback callback);
 
-/* Run main event loop */
-void mp_gui_run(void);
+/* Run main event loop / 메인 이벤트 루프 실행 */
+void mp_gui_run(mp_application* app);
 
 /* Process events */
 mp_bool mp_gui_process_events(void);

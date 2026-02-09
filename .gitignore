@@ -1,4 +1,4 @@
-# Build artifacts
+# Build artifacts / 빌드 산출물
 build/
 *.o
 *.a
@@ -6,16 +6,16 @@ build/
 *.dylib
 *.exe
 
-# Compiled binary
+# Compiled binary / 컴파일된 바이너리
 manypictures
 
-# Debug files
+# Debug files / 디버그 파일
 *.dSYM/
 *.su
 *.idb
 *.pdb
 
-# Editor files
+# Editor files / 에디터 파일
 .vscode/
 .idea/
 *.swp
@@ -23,7 +23,7 @@ manypictures
 *~
 .DS_Store
 
-# Test files
+# Test files / 테스트 파일
 test_images/
 *.bmp
 *.png
@@ -33,21 +33,21 @@ test_images/
 *.tiff
 *.webp
 
-# Documentation
+# Documentation / 문서
 docs/html/
 docs/latex/
 
-# Temporary files
+# Temporary files / 임시 파일
 *.tmp
 *.log
 core
 vgcore.*
 
-# CMake
+# CMake / CMake 관련
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
 
-# Backup files
+# Backup files / 백업 파일
 *.bak
 *.backup

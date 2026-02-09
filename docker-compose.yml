@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  manypictures:
+    build: .
+    container_name: manypictures_monster
+    environment:
+      - DISPLAY=${DISPLAY}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - .:/home/rheeworker/workspace:rw
+    working_dir: /home/rheeworker/workspace
+    restart: always
+
+# Rheehose (Rhee Creative) 2008-2026
