@@ -14,6 +14,11 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <math.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 
 
@@ -28,6 +33,16 @@ static void mp_gui_render_to_backbuffer(mp_application* app, int w, int h);
 static void mp_gui_draw_monster_bg(cairo_t* cr, int w, int h);
 static void mp_gui_update_image_surface(mp_application* app);
 void mp_image_record_history(mp_image* img, mp_operation_type op_type, const char* description);
+
+/* Rounded Rectangle Helper / 라운드 사각형 헬퍼 */
+static void draw_rounded_rectangle(cairo_t* cr, double x, double y, double w, double h, double r) {
+    cairo_new_sub_path(cr);
+    cairo_arc(cr, x + w - r, y + r, r, -M_PI/2, 0);
+    cairo_arc(cr, x + w - r, y + h - r, r, 0, M_PI/2);
+    cairo_arc(cr, x + r, y + h - r, r, M_PI/2, M_PI);
+    cairo_arc(cr, x + r, y + r, r, M_PI, 3*M_PI/2);
+    cairo_close_path(cr);
+}
 
 
 static Display* g_display = NULL;
@@ -318,55 +333,67 @@ static const mp_gui_button g_buttons[] = {
 };
 
 static void mp_gui_draw_sidebar(cairo_t* cr, int h, mp_language_mode mode) {
-    /* Glassmorphism Sidebar / 글래스모피즘 사이드바 */
-    cairo_set_source_rgba(cr, 1, 1, 1, 0.1);
-    cairo_rectangle(cr, 0, 0, 200, h);
+    /* Glassmorphism Sidebar v3.0 / 글래스모피즘 사이드바 v3.0 */
+    cairo_pattern_t* grad = cairo_pattern_create_linear(0, 0, 220, 0);
+    cairo_pattern_add_color_stop_rgba(grad, 0, 1, 1, 1, 0.15);
+    cairo_pattern_add_color_stop_rgba(grad, 0.8, 1, 1, 1, 0.05);
+    cairo_pattern_add_color_stop_rgba(grad, 1, 1, 1, 1, 0);
+    cairo_set_source(cr, grad);
+    cairo_rectangle(cr, 0, 0, 220, h);
     cairo_fill(cr);
+    cairo_pattern_destroy(grad);
     
     /* System Branding / 시스템 브랜딩 */
-    cairo_set_source_rgb(cr, 0.4, 0.7, 1.0);
-    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size(cr, 14);
-    cairo_move_to(cr, 20, 30);
+    cairo_set_source_rgb(cr, 0.4, 0.8, 1.0);
+    cairo_select_font_face(cr, "Inter", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_set_font_size(cr, 16);
+    cairo_move_to(cr, 25, 35);
     cairo_show_text(cr, "CHRONOS-EXIF");
-    cairo_move_to(cr, 20, 45);
+    cairo_set_source_rgb(cr, 0.6, 0.6, 0.6);
     cairo_set_font_size(cr, 10);
-    cairo_show_text(cr, "ARTIFACT ENGINE v2.2");
+    cairo_move_to(cr, 25, 52);
+    cairo_show_text(cr, "SUPREME ENGINE v3.0");
     
-    cairo_set_source_rgb(cr, 0.8, 0.8, 0.8);
+    /* Separator / 구분선 */
+    cairo_set_source_rgba(cr, 1, 1, 1, 0.2);
+    cairo_set_line_width(cr, 1.0);
+    cairo_move_to(cr, 25, 75);
+    cairo_line_to(cr, 195, 75);
+    cairo_stroke(cr);
+    
+    /* Section Title / 섹션 타이틀 */
+    cairo_set_source_rgb(cr, 0.9, 0.9, 0.9);
     cairo_set_font_size(cr, 18);
-    cairo_move_to(cr, 20, 80);
-    
-    /* Title Rendering / 타이틀 렌더링 */
+    cairo_move_to(cr, 25, 105);
     if (mode == MP_LANG_KR) {
         cairo_select_font_face(cr, g_system_font, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-        cairo_show_text(cr, "기능");
-        cairo_select_font_face(cr, "Inter", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD); /* Reset */
+        cairo_show_text(cr, "도구 상자");
     } else {
-        cairo_show_text(cr, "Operations");
+        cairo_select_font_face(cr, "Inter", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+        cairo_show_text(cr, "Toolkit");
     }
-    
-    /* Subtle separators / 미묘한 구분선 */
-    cairo_set_line_width(cr, 1.0);
-    cairo_move_to(cr, 20, 90);
-    cairo_line_to(cr, 180, 90);
-    cairo_stroke(cr);
     
     /* Draw Buttons / 버튼 그리기 */
     int num_buttons = sizeof(g_buttons) / sizeof(g_buttons[0]);
     for (int i = 0; i < num_buttons; i++) {
-        int y = 110 + g_buttons[i].y_offset;
+        int y = 135 + g_buttons[i].y_offset;
         
-        /* Premium Button Background / 프리미엄 버튼 배경 */
-        cairo_set_source_rgba(cr, 1, 1, 1, 0.12);
-        cairo_rectangle(cr, 10, y, 180, 52); /* Larger button / 더 큰 버튼 */
-        cairo_fill(cr);
+        /* Rounded Premium Button / 라운드 프리미엄 버튼 */
+        draw_rounded_rectangle(cr, 15, y, 190, 48, 12);
         
-        /* Subtle border / 은은한 테두리 */
-        cairo_set_source_rgba(cr, 1, 1, 1, 0.2);
-        cairo_set_line_width(cr, 0.5);
-        cairo_rectangle(cr, 10, y, 180, 52);
+        /* Inner Glow or Shadow Effect / 내부 광채 또는 그림자 효과 */
+        cairo_set_source_rgba(cr, 1, 1, 1, 0.1);
+        cairo_fill_preserve(cr);
+        
+        /* Border / 테두리 */
+        cairo_set_source_rgba(cr, 1, 1, 1, 0.25);
+        cairo_set_line_width(cr, 1.2);
         cairo_stroke(cr);
+        
+        /* Icon placeholder or Dot / 아이콘 플레이스홀더 또는 점 */
+        cairo_set_source_rgb(cr, 0.4, 0.8, 1.0);
+        cairo_arc(cr, 30, y + 24, 3, 0, 2*M_PI);
+        cairo_fill(cr);
         
         /* Button Text / 버튼 텍스트 */
         cairo_set_source_rgb(cr, 1, 1, 1);
@@ -374,23 +401,23 @@ static void mp_gui_draw_sidebar(cairo_t* cr, int h, mp_language_mode mode) {
         if (mode == MP_LANG_EN) {
             cairo_select_font_face(cr, "Inter", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
             cairo_set_font_size(cr, 11);
-            cairo_move_to(cr, 25, y + 30);
+            cairo_move_to(cr, 45, y + 29);
             cairo_show_text(cr, g_buttons[i].label_en);
         } else if (mode == MP_LANG_KR) {
             cairo_select_font_face(cr, g_system_font, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
             cairo_set_font_size(cr, 13);
-            cairo_move_to(cr, 25, y + 30);
+            cairo_move_to(cr, 45, y + 29);
             cairo_show_text(cr, g_buttons[i].label_kr);
         } else {
-            /* Bilingual Mode / 이중 언어 모드 - High Density / 고밀도 */
+            /* Bilingual Mode / 이중 언어 모드 */
             cairo_select_font_face(cr, "Inter", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
             cairo_set_font_size(cr, 10);
-            cairo_move_to(cr, 25, y + 22);
+            cairo_move_to(cr, 45, y + 20);
             cairo_show_text(cr, g_buttons[i].label_en);
             
             cairo_select_font_face(cr, g_system_font, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-            cairo_set_font_size(cr, 10);
-            cairo_move_to(cr, 25, y + 42);
+            cairo_set_font_size(cr, 11);
+            cairo_move_to(cr, 45, y + 38);
             cairo_show_text(cr, g_buttons[i].label_kr);
         }
     }
@@ -592,11 +619,11 @@ void mp_gui_run(mp_application* app) {
                     int y = ev.xbutton.y;
                     
                     /* Sidebar Hit Testing / 사이드바 히트 테스팅 */
-                    if (x >= 10 && x <= 190) {
+                    if (x >= 15 && x <= 205) {
                         int num_buttons = sizeof(g_buttons) / sizeof(g_buttons[0]);
                         for (int i = 0; i < num_buttons; i++) {
-                            int btn_y = 110 + g_buttons[i].y_offset;
-                            if (y >= btn_y && y <= btn_y + 52) {
+                            int btn_y = 135 + g_buttons[i].y_offset;
+                            if (y >= btn_y && y <= btn_y + 48) {
                                 /* Clicked button i */
                                 if (g_buttons[i].op_type == MP_OP_OPEN_DIALOG) {
                                     /* Invoke System File Dialog / 시스템 파일 대화 상자 호출 */

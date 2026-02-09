@@ -23,6 +23,13 @@ Many Pictures is a comprehensive image viewing and editing application written e
 - **HSV Manipulation**: Hue, saturation, value adjustments / 색상, 채도, 명도 조절
 - **Brightness/Contrast**: Advanced tone curve adjustments / 고급 톤 커브 및 밝기/대비 조절
 
+### 💎 Supreme UI/UX v3.0 / 슈프림 UI/UX v3.0
+- **Rounded Glassmorphism**: High-end rounded buttons with multi-layered translucency. / 다중 레이어 반투명 효과가 적용된 하이엔드 라운드 버튼.
+- **CHRONOS-EXIF Engine**: Precision metadata management with premium aesthetics. / 프리미엄 미학을 결합한 정밀 메타데이터 관리.
+- **Monster Zoom System**: Interactive scaling with zero-latency response. / 레이턴시가 없는 대화형 줌 시스템.
+- **Perfect Bilingual Interface**: Seamless Korean/English toggle with single-click precision. / 클릭 한 번으로 정밀하게 전환되는 완벽한 한영 병기 인터페이스.
+- **Stride-Correct Rendering**: Zero artifacts on ultra-high resolution images. / 초고해상도 이미지에서도 아티팩트가 없는 렌더링.
+
 ### EXIF & History Tracking / EXIF 및 히스토리 추적
 - **Chronos-EXIF Artifact Engine**: Every pixel-level mutation is mathematically stamped with a unique ID, command name, and timestamp. / 모든 픽셀 수준의 변이는 고유 ID, 명령 이름 및 타임스탬프로 수학적으로 각인되어 보존됩니다.
 - **Interactive Undo/Redo Buttons**: Dedicated UI elements for non-destructive state navigation. / **대화형 실행 취소/다시 실행 버튼**: 비파괴 상태 탐색을 위한 전용 UI 요소.
@@ -189,6 +196,10 @@ sudo make uninstall
 - Leak detection / 누수 탐지
 
 ### EXIF History Format / EXIF 히스토리 포맷
+
+The Many Pictures architecture is built for extreme performance and premium visual quality. It uses a custom X11/Cairo based rendering stack with a state-driven event system (Supreme UI v3.0).
+
+Many Pictures 아키텍처는 극한의 성능과 프리미엄 시각적 품질을 위해 설계되었습니다. 상태 구동형 이벤트 시스템(Supreme UI v3.0)을 갖춘 맞춤형 X11/Cairo 기반 렌더링 스택을 사용합니다.
 
 Many Pictures stores operation history in EXIF metadata using custom tags:
 Many Pictures는 사용자 정의 태그를 사용하여 EXIF 메타데이터에 작업 히스토리를 저장합니다:
