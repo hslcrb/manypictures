@@ -1,6 +1,7 @@
 #include "core/types.h"
 #include "core/memory.h"
 #include "core/image.h"
+#include "core/fast_io.h"
 #include "operations/color_ops.h"
 #include "operations/edit_ops.h"
 #include "gui/gui.h"
@@ -28,84 +29,84 @@
 #define MP_NAME "Many Pictures"
 
 static void print_usage(const char* program_name) {
-    printf("%s v%s - Advanced Image Viewer and Editor\n\n", MP_NAME, MP_VERSION);
-    printf("Usage: %s [options] [file]\n\n", program_name);
-    printf("Options:\n");
-    printf("  -h, --help              Show this help message\n");
-    printf("  -v, --version           Show version information\n");
-    printf("  -g, --grayscale <file>  Convert image to grayscale\n");
-    printf("  -c, --colorize <file>   Convert grayscale to color\n");
-    printf("  -i, --invert <file>     Invert image colors\n");
-    printf("  -ig, --invert-gray <file> Invert and convert to grayscale\n");
-    printf("  -r, --rotate <deg> <file> Rotate image (90, 180, 270)\n");
-    printf("  -s, --resize <w>x<h> <file> Resize image\n");
-    printf("  -o, --output <file>     Output file path\n");
-    printf("  --info <file>           Show image information\n");
-    printf("  --history <file>        Show image history from EXIF\n");
-    printf("\n");
-    printf("Supported formats:\n");
-    printf("  Images: BMP, PNG, JPEG, GIF, TIFF, WebP, ICO, TGA, PSD\n");
-    printf("  Videos: AVI, MP4, MKV, WebM, MOV, FLV\n");
-    printf("\n");
-    printf("Examples:\n");
-    printf("  %s image.jpg                    # Open in GUI\n", program_name);
-    printf("  %s -g input.jpg -o output.jpg   # Convert to grayscale\n", program_name);
-    printf("  %s -c gray.jpg -o color.jpg     # Colorize grayscale\n", program_name);
-    printf("  %s -i input.png -o output.png   # Invert colors\n", program_name);
-    printf("  %s --info image.jpg             # Show image info\n", program_name);
+    mp_fast_printf("%s v%s - Advanced Image Viewer and Editor\n\n", MP_NAME, MP_VERSION);
+    mp_fast_printf("Usage: %s [options] [file]\n\n", program_name);
+    mp_fast_printf("Options:\n");
+    mp_fast_printf("  -h, --help              Show this help message\n");
+    mp_fast_printf("  -v, --version           Show version information\n");
+    mp_fast_printf("  -g, --grayscale <file>  Convert image to grayscale\n");
+    mp_fast_printf("  -c, --colorize <file>   Convert grayscale to color\n");
+    mp_fast_printf("  -i, --invert <file>     Invert image colors\n");
+    mp_fast_printf("  -ig, --invert-gray <file> Invert and convert to grayscale\n");
+    mp_fast_printf("  -r, --rotate <deg> <file> Rotate image (90, 180, 270)\n");
+    mp_fast_printf("  -s, --resize <w>x<h> <file> Resize image\n");
+    mp_fast_printf("  -o, --output <file>     Output file path\n");
+    mp_fast_printf("  --info <file>           Show image information\n");
+    mp_fast_printf("  --history <file>        Show image history from EXIF\n");
+    mp_fast_printf("\n");
+    mp_fast_printf("Supported formats:\n");
+    mp_fast_printf("  Images: BMP, PNG, JPEG, GIF, TIFF, WebP, ICO, TGA, PSD\n");
+    mp_fast_printf("  Videos: AVI, MP4, MKV, WebM, MOV, FLV\n");
+    mp_fast_printf("\n");
+    mp_fast_printf("Examples:\n");
+    mp_fast_printf("  %s image.jpg                    # Open in GUI\n", program_name);
+    mp_fast_printf("  %s -g input.jpg -o output.jpg   # Convert to grayscale\n", program_name);
+    mp_fast_printf("  %s -c gray.jpg -o color.jpg     # Colorize grayscale\n", program_name);
+    mp_fast_printf("  %s -i input.png -o output.png   # Invert colors\n", program_name);
+    mp_fast_printf("  %s --info image.jpg             # Show image info\n", program_name);
 }
 
 static void print_version(void) {
-    printf("%s v%s\n", MP_NAME, MP_VERSION);
-    printf("Pure C implementation with custom codecs\n");
-    printf("Copyright (c) 2026\n");
+    mp_fast_printf("%s v%s\n", MP_NAME, MP_VERSION);
+    mp_fast_printf("Pure C implementation with custom codecs\n");
+    mp_fast_printf("Copyright (c) 2026\n");
 }
 
 static void print_image_info(const char* filepath) {
     mp_image* image = mp_image_load(filepath);
     if (!image) {
-        fprintf(stderr, "Error: Failed to load image '%s'\n", filepath);
+        mp_fast_fprintf(2, "Error: Failed to load image '%s'\n", filepath);
         return;
     }
     
-    printf("Image Information:\n");
-    printf("  File: %s\n", filepath);
-    printf("  Format: ");
+    mp_fast_printf("Image Information:\n");
+    mp_fast_printf("  File: %s\n", filepath);
+    mp_fast_printf("  Format: ");
     
     switch (image->metadata->format) {
-        case MP_FORMAT_BMP: printf("BMP\n"); break;
-        case MP_FORMAT_PNG: printf("PNG\n"); break;
-        case MP_FORMAT_JPEG: printf("JPEG\n"); break;
-        case MP_FORMAT_GIF: printf("GIF\n"); break;
-        case MP_FORMAT_TIFF: printf("TIFF\n"); break;
-        case MP_FORMAT_WEBP: printf("WebP\n"); break;
-        default: printf("Unknown\n"); break;
+        case MP_FORMAT_BMP: mp_fast_printf("BMP\n"); break;
+        case MP_FORMAT_PNG: mp_fast_printf("PNG\n"); break;
+        case MP_FORMAT_JPEG: mp_fast_printf("JPEG\n"); break;
+        case MP_FORMAT_GIF: mp_fast_printf("GIF\n"); break;
+        case MP_FORMAT_TIFF: mp_fast_printf("TIFF\n"); break;
+        case MP_FORMAT_WEBP: mp_fast_printf("WebP\n"); break;
+        default: mp_fast_printf("Unknown\n"); break;
     }
     
-    printf("  Dimensions: %ux%u\n", image->metadata->width, image->metadata->height);
-    printf("  Bit Depth: %u\n", image->metadata->bit_depth);
-    printf("  Color Format: ");
+    mp_fast_printf("  Dimensions: %ux%u\n", image->metadata->width, image->metadata->height);
+    mp_fast_printf("  Bit Depth: %u\n", image->metadata->bit_depth);
+    mp_fast_printf("  Color Format: ");
     
     switch (image->metadata->color_format) {
-        case MP_COLOR_FORMAT_RGB: printf("RGB\n"); break;
-        case MP_COLOR_FORMAT_RGBA: printf("RGBA\n"); break;
-        case MP_COLOR_FORMAT_GRAYSCALE: printf("Grayscale\n"); break;
-        default: printf("Other\n"); break;
+        case MP_COLOR_FORMAT_RGB: mp_fast_printf("RGB\n"); break;
+        case MP_COLOR_FORMAT_RGBA: mp_fast_printf("RGBA\n"); break;
+        case MP_COLOR_FORMAT_GRAYSCALE: mp_fast_printf("Grayscale\n"); break;
+        default: mp_fast_printf("Other\n"); break;
     }
     
-    printf("  Has Alpha: %s\n", image->metadata->has_alpha ? "Yes" : "No");
-    printf("  Has EXIF: %s\n", image->metadata->has_exif ? "Yes" : "No");
+    mp_fast_printf("  Has Alpha: %s\n", image->metadata->has_alpha ? "Yes" : "No");
+    mp_fast_printf("  Has EXIF: %s\n", image->metadata->has_exif ? "Yes" : "No");
     
     if (image->metadata->has_exif && image->metadata->exif) {
-        printf("\nEXIF Data:\n");
+        mp_fast_printf("\nEXIF Data:\n");
         if (image->metadata->exif->make[0]) {
-            printf("  Make: %s\n", image->metadata->exif->make);
+            mp_fast_printf("  Make: %s\n", image->metadata->exif->make);
         }
         if (image->metadata->exif->model[0]) {
-            printf("  Model: %s\n", image->metadata->exif->model);
+            mp_fast_printf("  Model: %s\n", image->metadata->exif->model);
         }
         if (image->metadata->exif->datetime[0]) {
-            printf("  DateTime: %s\n", image->metadata->exif->datetime);
+            mp_fast_printf("  DateTime: %s\n", image->metadata->exif->datetime);
         }
     }
     
@@ -176,15 +177,15 @@ static mp_result process_command_line(int argc, char** argv) {
     }
     
     /* Load image */
-    printf("Loading image: %s\n", input_file);
+    mp_fast_printf("Loading image: %s\n", input_file);
     mp_image* image = mp_image_load(input_file);
     if (!image) {
-        fprintf(stderr, "Error: Failed to load image '%s'\n", input_file);
+        mp_fast_fprintf(2, "Error: Failed to load image '%s'\n", input_file);
         return MP_ERROR_FILE_NOT_FOUND;
     }
     
     /* Apply operation */
-    printf("Applying operation: %s\n", operation);
+    mp_fast_printf("Applying operation: %s\n", operation);
     mp_result result = MP_SUCCESS;
     
     if (strcmp(operation, "grayscale") == 0) {
@@ -202,7 +203,7 @@ static mp_result process_command_line(int argc, char** argv) {
     }
     
     if (result != MP_SUCCESS) {
-        fprintf(stderr, "Error: Operation failed\n");
+        mp_fast_fprintf(2, "Error: Operation failed\n");
         mp_image_destroy(image);
         return result;
     }
@@ -212,7 +213,7 @@ static mp_result process_command_line(int argc, char** argv) {
         output_file = "output.png";
     }
     
-    printf("Saving image: %s\n", output_file);
+    mp_fast_printf("Saving image: %s\n", output_file);
     mp_image_format format = mp_image_detect_format(output_file);
     if (format == MP_FORMAT_UNKNOWN) {
         format = MP_FORMAT_PNG;
@@ -220,20 +221,20 @@ static mp_result process_command_line(int argc, char** argv) {
     
     result = mp_image_save(image, output_file, format);
     if (result != MP_SUCCESS) {
-        fprintf(stderr, "Error: Failed to save image\n");
+        mp_fast_fprintf(2, "Error: Failed to save image\n");
         mp_image_destroy(image);
         return result;
     }
     
-    printf("Done!\n");
+    mp_fast_printf("Done!\n");
     mp_image_destroy(image);
     
     return MP_SUCCESS;
 }
 
 int main(int argc, char** argv) {
-    printf("%s v%s / %s v%s\n", MP_NAME, MP_VERSION, MP_NAME, MP_VERSION);
-    printf("Initializing... / 초기화 중...\n\n");
+    mp_fast_printf("%s v%s / %s v%s\n", MP_NAME, MP_VERSION, MP_NAME, MP_VERSION);
+    mp_fast_printf("Initializing... / 초기화 중...\n\n");
     
     /* Initialize memory system / 메모리 시스템 초기화 */
     mp_memory_init();
@@ -243,17 +244,17 @@ int main(int argc, char** argv) {
     
     if (result == MP_ERROR_INVALID_PARAM && argc >= 2) {
         /* Open GUI with file */
-        printf("Starting GUI mode...\n");
+        mp_fast_printf("Starting GUI mode...\n");
         
         if (mp_gui_init() != MP_SUCCESS) {
-            fprintf(stderr, "Error: Failed to initialize GUI\n");
+            mp_fast_fprintf(2, "Error: Failed to initialize GUI\n");
             mp_memory_shutdown();
             return 1;
         }
         
         mp_application* app = mp_app_create();
         if (!app) {
-            fprintf(stderr, "Error: Failed to create application\n");
+            mp_fast_fprintf(2, "Error: Failed to create application\n");
             mp_gui_shutdown();
             mp_memory_shutdown();
             return 1;

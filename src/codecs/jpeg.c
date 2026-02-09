@@ -1,8 +1,8 @@
 #include "jpeg.h"
 #include "../core/memory.h"
+#include "../core/fast_io.h"
 #include <string.h>
 #include <math.h>
-#include <stdio.h>
 
 /* JPEG codec implementation - DCT, Huffman, quantization */
 
@@ -165,12 +165,16 @@ jpeg_encoder* mp_jpeg_encoder_create(u8 quality) {
     encoder->output = (u8*)mp_malloc(encoder->output_capacity);
     if (!encoder->output) { mp_free(encoder); return NULL; }
     
-    /* Extreme optimization: Pre-calculate quantization tables with scaling */
-    i32 S = (encoder->quality < 50) ? (5000 / encoder->quality) : (200 - encoder->quality * 2);
+    /* Extreme optimization: Pre-calculate quantization tables with scaling / 극한 최적화: 스케일링을 통한 양자화 테이블 사전 계산 */
+    /* S = (encoder->quality < 50) ? (5000 / quality) : (200 - quality * 2) */
+    i32 S = (encoder->quality < 50) ? (5000 / encoder->quality) : (200 - (encoder->quality << 1));
+    
+    #pragma GCC unroll 64
     for (int i = 0; i < 64; i++) {
-        i32 ql = (g_jpeg_quant_luma[i] * S + 50) / 100;
+        i32 ql = ((i32)g_jpeg_quant_luma[i] * S + 50) / 100;
         encoder->quant_tables[0][i] = (u8)(ql < 1 ? 1 : (ql > 255 ? 255 : ql));
-        i32 qc = (g_jpeg_quant_chroma[i] * S + 50) / 100;
+        
+        i32 qc = ((i32)g_jpeg_quant_chroma[i] * S + 50) / 100;
         encoder->quant_tables[1][i] = (u8)(qc < 1 ? 1 : (qc > 255 ? 255 : qc));
     }
     
@@ -222,7 +226,7 @@ mp_result mp_jpeg_encode(jpeg_encoder* encoder, const mp_image_buffer* buffer,
     if (!encoder || !buffer || !out_data || !out_size) return MP_ERROR_INVALID_PARAM;
     
     /* Binary bitstream construction: SOI, DQT, DHT, SOF, SOS, EOI... */
-    printf("Encoding image to JPEG (High-performance integer DCT)...\n");
+    mp_fast_printf("Encoding image to JPEG (High-performance integer DCT)...\n");
     
     /* Skeleton for the full bitstream writer */
     *out_data = encoder->output;

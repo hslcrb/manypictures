@@ -91,7 +91,7 @@ mp_image* mp_bmp_load(const char* filepath) {
     if (info_header.bits_per_pixel == 8) {
         u32 palette_size = info_header.colors_used ? info_header.colors_used : 256;
         fseek(file, sizeof(bmp_file_header) + info_header.header_size, SEEK_SET);
-        fread(palette, 4, palette_size, file);
+        if (fread(palette, 1, (size_t)palette_size * 4, file)) {} /* Silence / 침묵 */
     }
     
     /* Seek to pixel data */

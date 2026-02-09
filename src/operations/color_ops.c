@@ -1,6 +1,7 @@
 #include "color_ops.h"
 #include "../core/memory.h"
 #include "../core/image.h"
+#include "../core/fast_io.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -294,7 +295,7 @@ void mp_colorization_network_destroy(mp_colorization_network* network) {
 void mp_colorization_network_init_weights(mp_colorization_network* network) {
     if (!network || !network->weights) return;
     
-    printf("Initializing Monster implementation weights (Deterministic AI approximation)... / 괴물급 구현 가중치 초기화 중 (결정론적 AI 근사)...\n");
+    mp_fast_printf("Initializing Monster implementation weights (Deterministic AI approximation)... / 괴물급 구현 가중치 초기화 중 (결정론적 AI 근사)...\n");
     f32* w = network->weights;
     
     u32 fan_ins[] = {9, 64, 32, 16};
@@ -370,7 +371,7 @@ void mp_colorization_predict(mp_colorization_network* network,
 mp_result mp_op_to_color(mp_image* image) {
     if (!image || !image->buffer) return MP_ERROR_INVALID_PARAM;
     
-    printf("Starting neural colorization (Deep MLP 5-layer)... / 신경망 컬러화 시작 (심층 MLP 5층 구조)...\n");
+    mp_fast_printf("Starting neural colorization (Deep MLP 5-layer)... / 신경망 컬러화 시작 (심층 MLP 5층 구조)...\n");
     mp_colorization_network* network = mp_colorization_network_create();
     if (!network) return MP_ERROR_MEMORY;
     
@@ -407,7 +408,7 @@ mp_result mp_op_to_color(mp_image* image) {
     
     mp_colorization_network_destroy(network);
     image->modified = MP_TRUE;
-    printf("Colorization complete. / 컬러화 완료.\n");
+    mp_fast_printf("Colorization complete. / 컬러화 완료.\n");
     return MP_SUCCESS;
 }
 

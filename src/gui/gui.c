@@ -1,22 +1,24 @@
 #include "gui.h"
 #include "../core/memory.h"
 #include "../core/image.h"
+#include "../core/fast_io.h"
 #include "../operations/color_ops.h"
 #include "../operations/edit_ops.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 /* GUI implementation - stub for X11/GTK */
 
 mp_result mp_gui_init(void) {
     /* TODO: Initialize X11 or GTK */
-    printf("GUI initialization (stub)\n");
+    mp_fast_printf("GUI initialization (stub)\n");
     return MP_SUCCESS;
 }
 
 void mp_gui_shutdown(void) {
     /* TODO: Cleanup GUI resources */
-    printf("GUI shutdown (stub)\n");
+    mp_fast_printf("GUI shutdown (stub)\n");
 }
 
 mp_window* mp_window_create(const char* title, u32 width, u32 height) {
@@ -117,14 +119,14 @@ void mp_widget_set_callback(mp_widget* widget, mp_event_callback callback) {
  */
 
 void mp_gui_run(void) {
-    printf("Starting GUI main loop...\n");
+    mp_fast_printf("Starting GUI main loop...\n");
     mp_bool quit = MP_FALSE;
     while (!quit) {
         mp_event ev;
         (void)ev;
         /* Check for CLI transition command */
         if (0) {
-            printf("Switching to CLI mode...\n");
+            mp_fast_printf("Switching to CLI mode...\n");
             return;
         }
         quit = MP_TRUE;
@@ -153,7 +155,7 @@ mp_result mp_app_run(mp_application* app) {
     if (!app) return MP_ERROR_INVALID_PARAM;
     
     mp_window_show(app->main_window);
-    printf("Many Pictures: GUI Application is now active.\n");
+    mp_fast_printf("Many Pictures: GUI Application is now active.\n");
     
     /* Enter primary event loop */
     mp_gui_run();
@@ -165,7 +167,7 @@ mp_result mp_app_run(mp_application* app) {
  * Called from CLI when the user enters a '/' command.
  */
 mp_result mp_app_transition_to_gui(mp_application* app) {
-    printf("Transition signal received. Reactivating GUI...\n");
+    mp_fast_printf("Transition signal received. Reactivating GUI...\n");
     if (!app->main_window) {
         app->main_window = mp_window_create("Many Pictures", 1024, 768);
     }
@@ -176,10 +178,10 @@ mp_result mp_app_transition_to_gui(mp_application* app) {
  * Called when the user requests a terminal view.
  */
 void mp_app_transition_to_cli(mp_application* app) {
-    printf("Entering CLI shell mode. Enter 'exit' to return to GUI.\n");
+    mp_fast_printf("Entering CLI shell mode. Enter 'exit' to return to GUI.\n");
     char cmd[256];
     while (1) {
-        printf("mp> ");
+        mp_fast_printf("mp> ");
         if (!fgets(cmd, sizeof(cmd), stdin)) break;
         if (strncmp(cmd, "gui", 3) == 0 || strncmp(cmd, "/", 1) == 0) {
             mp_app_transition_to_gui(app);
@@ -196,11 +198,11 @@ mp_result mp_app_load_image(mp_application* app, const char* filepath) {
         return MP_ERROR_INVALID_PARAM;
     }
     
-    printf("Loading image: %s\n", filepath);
+    mp_fast_printf("Loading image: %s\n", filepath);
     
     mp_image* image = mp_image_load(filepath);
     if (!image) {
-        fprintf(stderr, "Failed to load image: %s\n", filepath);
+        mp_fast_fprintf(2, "Failed to load image: %s\n", filepath);
         return MP_ERROR_FILE_NOT_FOUND;
     }
     
@@ -215,7 +217,7 @@ mp_result mp_app_load_image(mp_application* app, const char* filepath) {
     }
     app->current_file = mp_strdup(filepath);
     
-    printf("Image loaded: %ux%u\n", image->buffer->width, image->buffer->height);
+    mp_fast_printf("Image loaded: %ux%u\n", image->buffer->width, image->buffer->height);
     
     return MP_SUCCESS;
 }
@@ -225,7 +227,7 @@ mp_result mp_app_save_image(mp_application* app, const char* filepath) {
         return MP_ERROR_INVALID_PARAM;
     }
     
-    printf("Saving image: %s\n", filepath);
+    mp_fast_printf("Saving image: %s\n", filepath);
     
     mp_image_format format = mp_image_detect_format(filepath);
     if (format == MP_FORMAT_UNKNOWN) {
@@ -234,11 +236,11 @@ mp_result mp_app_save_image(mp_application* app, const char* filepath) {
     
     mp_result result = mp_image_save(app->current_image, filepath, format);
     if (result != MP_SUCCESS) {
-        fprintf(stderr, "Failed to save image: %s\n", filepath);
+        mp_fast_fprintf(2, "Failed to save image: %s\n", filepath);
         return result;
     }
     
-    printf("Image saved successfully\n");
+    mp_fast_printf("Image saved successfully\n");
     
     return MP_SUCCESS;
 }
@@ -252,32 +254,32 @@ mp_result mp_app_apply_operation(mp_application* app, mp_operation_type op_type)
     
     switch (op_type) {
         case MP_OP_GRAYSCALE:
-            printf("Applying grayscale conversion...\n");
+            mp_fast_printf("Applying grayscale conversion...\n");
             result = mp_op_to_grayscale(app->current_image);
             break;
             
         case MP_OP_COLORIZE:
-            printf("Applying colorization...\n");
+            mp_fast_printf("Applying colorization...\n");
             result = mp_op_to_color(app->current_image);
             break;
             
         case MP_OP_INVERT:
-            printf("Applying color inversion...\n");
+            mp_fast_printf("Applying color inversion...\n");
             result = mp_op_invert(app->current_image);
             break;
             
         case MP_OP_INVERT_GRAYSCALE:
-            printf("Applying invert + grayscale...\n");
+            mp_fast_printf("Applying invert + grayscale...\n");
             result = mp_op_invert_grayscale(app->current_image);
             break;
             
         case MP_OP_FLIP_H:
-            printf("Flipping horizontally...\n");
+            mp_fast_printf("Flipping horizontally...\n");
             result = mp_op_flip_horizontal(app->current_image);
             break;
             
         case MP_OP_FLIP_V:
-            printf("Flipping vertically...\n");
+            mp_fast_printf("Flipping vertically...\n");
             result = mp_op_flip_vertical(app->current_image);
             break;
             
@@ -286,9 +288,9 @@ mp_result mp_app_apply_operation(mp_application* app, mp_operation_type op_type)
     }
     
     if (result == MP_SUCCESS) {
-        printf("Operation completed successfully\n");
+        mp_fast_printf("Operation completed successfully\n");
     } else {
-        fprintf(stderr, "Operation failed\n");
+        mp_fast_fprintf(2, "Operation failed\n");
     }
     
     return result;

@@ -19,7 +19,8 @@ TARGET = $(BIN_DIR)/manypictures
 # Source files
 CORE_SOURCES = \
 	$(SRC_DIR)/core/memory.c \
-	$(SRC_DIR)/core/image.c
+	$(SRC_DIR)/core/image.c \
+	$(SRC_DIR)/core/fast_io.c
 
 FORMAT_SOURCES = \
 	$(SRC_DIR)/formats/bmp.c \
@@ -56,6 +57,7 @@ HEADERS = \
 	$(SRC_DIR)/core/types.h \
 	$(SRC_DIR)/core/memory.h \
 	$(SRC_DIR)/core/image.h \
+	$(SRC_DIR)/core/fast_io.h \
 	$(SRC_DIR)/codecs/deflate.h \
 	$(SRC_DIR)/codecs/jpeg.h \
 	$(SRC_DIR)/exif/exif.h \

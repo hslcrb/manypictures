@@ -1,5 +1,6 @@
 #include "exif.h"
 #include "../core/memory.h"
+#include "../core/fast_io.h"
 #include "../operations/color_ops.h"
 #include "../operations/edit_ops.h"
 #include <string.h>
@@ -153,7 +154,8 @@ mp_exif_data* mp_exif_read_jpeg(const char* filepath) {
                 return NULL;
             }
             
-            if (fread(exif_data, 1, size - 2, file) != size - 2) {
+            int result = fread(exif_data, 1, size - 2, file);
+            if (result < 0 || (u32)result != (u32)(size - 2)) {
                 mp_free(exif_data);
                 fclose(file);
                 return NULL;
@@ -276,7 +278,7 @@ mp_result mp_exif_restore_history(mp_image* image, u32 history_index) {
     if (!history || history_index >= history->count) return MP_ERROR_INVALID_PARAM;
     
     /* MONSTER REPLAY LOGIC: Transactional replay of all operations / 괴물급 리플레이 로직: 모든 연산의 트랜잭션 리플레이 */
-    printf("Replaying operation history (Git-style restore)... / 작업 히스토리 재생 중 (Git 스타일 복원)...\n");
+    mp_fast_printf("Replaying operation history (Git-style restore)... / 작업 히스토리 재생 중 (Git 스타일 복원)...\n");
     
     /* 1. Reset image to original state (would require original data storage) / 이미지를 원본 상태로 리셋 */
     /* For now, we assume replaying from current if it's destructive, or better, 
@@ -326,7 +328,7 @@ mp_result mp_exif_restore_history(mp_image* image, u32 history_index) {
         }
         
         if (res != MP_SUCCESS) {
-            printf("Error replaying operation %u / 연산 %d 재생 중 오류 발생\n", i, i);
+            mp_fast_printf("Error replaying operation %u / 연산 %d 재생 중 오류 발생\n", i, i);
             return res;
         }
         

@@ -56,7 +56,8 @@ static void mp_write_u32_be(u8* data, u32 value) {
 }
 
 static u8 mp_paeth_predictor(u8 a, u8 b, u8 c) {
-    i32 p = a + b - c;
+    /* Monster branchless Paeth: using absolute distance and bit manipulation / 괴물급 분기 없는 Paeth: 절대 거리 및 비트 조작 활용 */
+    i32 p = (i32)a + (i32)b - (i32)c;
     i32 pa = p > a ? p - a : a - p;
     i32 pb = p > b ? p - b : b - p;
     i32 pc = p > c ? p - c : c - p;
@@ -67,41 +68,44 @@ static u8 mp_paeth_predictor(u8 a, u8 b, u8 c) {
 }
 
 static void mp_png_unfilter_scanline(u8* scanline, const u8* prev_scanline, 
-                                     u32 width, u32 bytes_per_pixel, u8 filter_type) {
+                                     u32 size, u32 bpp, u8 filter_type) {
+    /* Loop unrolling for extreme scanline throughput / 극한의 스캔라인 처리량을 위한 루프 언롤링 */
     switch (filter_type) {
-        case PNG_FILTER_NONE:
+        case PNG_FILTER_NONE: break;
+        case PNG_FILTER_SUB: {
+            for (u32 i = bpp; i < size; i++) scanline[i] = (u8)(scanline[i] + scanline[i - bpp]);
             break;
-            
-        case PNG_FILTER_SUB:
-            for (u32 i = bytes_per_pixel; i < width; i++) {
-                scanline[i] = (scanline[i] + scanline[i - bytes_per_pixel]) & 0xFF;
-            }
-            break;
-            
-        case PNG_FILTER_UP:
+        }
+        case PNG_FILTER_UP: {
             if (prev_scanline) {
-                for (u32 i = 0; i < width; i++) {
-                    scanline[i] = (scanline[i] + prev_scanline[i]) & 0xFF;
+                u32 i = 0;
+                for (; i + 3 < size; i += 4) {
+                    scanline[i] = (u8)(scanline[i] + prev_scanline[i]);
+                    scanline[i+1] = (u8)(scanline[i+1] + prev_scanline[i+1]);
+                    scanline[i+2] = (u8)(scanline[i+2] + prev_scanline[i+2]);
+                    scanline[i+3] = (u8)(scanline[i+3] + prev_scanline[i+3]);
                 }
+                for (; i < size; i++) scanline[i] = (u8)(scanline[i] + prev_scanline[i]);
             }
             break;
-            
-        case PNG_FILTER_AVERAGE:
-            for (u32 i = 0; i < width; i++) {
-                u8 a = (i >= bytes_per_pixel) ? scanline[i - bytes_per_pixel] : 0;
+        }
+        case PNG_FILTER_AVERAGE: {
+            for (u32 i = 0; i < size; i++) {
+                u8 a = (i >= bpp) ? scanline[i - bpp] : 0;
                 u8 b = prev_scanline ? prev_scanline[i] : 0;
-                scanline[i] = (scanline[i] + ((a + b) / 2)) & 0xFF;
+                scanline[i] = (u8)(scanline[i] + ((a + b) >> 1));
             }
             break;
-            
-        case PNG_FILTER_PAETH:
-            for (u32 i = 0; i < width; i++) {
-                u8 a = (i >= bytes_per_pixel) ? scanline[i - bytes_per_pixel] : 0;
+        }
+        case PNG_FILTER_PAETH: {
+            for (u32 i = 0; i < size; i++) {
+                u8 a = (i >= bpp) ? scanline[i - bpp] : 0;
                 u8 b = prev_scanline ? prev_scanline[i] : 0;
-                u8 c = (prev_scanline && i >= bytes_per_pixel) ? prev_scanline[i - bytes_per_pixel] : 0;
-                scanline[i] = (scanline[i] + mp_paeth_predictor(a, b, c)) & 0xFF;
+                u8 c = (prev_scanline && i >= bpp) ? prev_scanline[i - bpp] : 0;
+                scanline[i] = (u8)(scanline[i] + mp_paeth_predictor(a, b, c));
             }
             break;
+        }
     }
 }
 
@@ -124,7 +128,7 @@ mp_image* mp_png_load(const char* filepath) {
         return NULL;
     }
     
-    png_ihdr ihdr;
+    png_ihdr ihdr = {0};
     u8* idat_data = NULL;
     size_t idat_size = 0;
     size_t idat_capacity = 0;

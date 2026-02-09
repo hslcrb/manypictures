@@ -61,7 +61,15 @@ u32 mp_crc32(const u8* data, size_t size) {
 u32 mp_crc32_update(u32 crc, const u8* data, size_t size) {
     mp_crc32_init_table();
     
-    for (size_t i = 0; i < size; i++) {
+    /* Monster unrolling for CRC32 / CRC32를 위한 거물급 루프 언롤링 */
+    size_t i = 0;
+    for (; i + 3 < size; i += 4) {
+        crc = g_crc32_table[(crc ^ data[i]) & 0xFF] ^ (crc >> 8);
+        crc = g_crc32_table[(crc ^ data[i+1]) & 0xFF] ^ (crc >> 8);
+        crc = g_crc32_table[(crc ^ data[i+2]) & 0xFF] ^ (crc >> 8);
+        crc = g_crc32_table[(crc ^ data[i+3]) & 0xFF] ^ (crc >> 8);
+    }
+    for (; i < size; i++) {
         crc = g_crc32_table[(crc ^ data[i]) & 0xFF] ^ (crc >> 8);
     }
     
@@ -72,9 +80,17 @@ u32 mp_adler32(const u8* data, size_t size) {
     u32 s1 = 1;
     u32 s2 = 0;
     
-    for (size_t i = 0; i < size; i++) {
-        s1 = (s1 + data[i]) % 65521;
-        s2 = (s2 + s1) % 65521;
+    /* Monster optimization: larger unrolling and deferred modulo / 거물급 최적화: 대규모 언롤링 및 지연된 나머지 연산 */
+    size_t i = 0;
+    while (size > 0) {
+        size_t tlen = size > 5550 ? 5550 : size;
+        size -= tlen;
+        for (size_t j = 0; j < tlen; j++) {
+            s1 += data[i++];
+            s2 += s1;
+        }
+        s1 %= 65521;
+        s2 %= 65521;
     }
     
     return (s2 << 16) | s1;
