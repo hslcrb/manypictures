@@ -300,17 +300,21 @@ typedef struct {
 
 static const mp_gui_button g_buttons[] = {
     {"Open File", "파일 열기", 0, MP_OP_OPEN_DIALOG},
-    {"Language", "한/영", 50, MP_OP_LANG_TOGGLE},
-    {"Undo", "실행 취소", 100, MP_OP_UNDO},
-    {"Redo", "다시 실행", 140, MP_OP_REDO},
-    {"Zoom In", "확대", 200, MP_OP_ZOOM_IN},
-    {"Zoom Out", "축소", 240, MP_OP_ZOOM_OUT},
-    {"Reset", "초기화", 280, MP_OP_ZOOM_RESET},
-    {"Grayscale", "흑백 변환", 340, MP_OP_GRAYSCALE},
-    {"Colorize", "컬러화", 380, MP_OP_COLORIZE},
-    {"Invert", "색상 반전", 420, MP_OP_INVERT},
-    {"Flip H", "좌우 반전", 460, MP_OP_FLIP_H},
-    {"Flip V", "상하 반전", 500, MP_OP_FLIP_V}
+    {"Save Image", "저장하기", 58, MP_OP_SAVE},
+    {"Language", "한/영", 116, MP_OP_LANG_TOGGLE},
+    
+    {"Undo", "실행 취소", 190, MP_OP_UNDO},
+    {"Redo", "다시 실행", 248, MP_OP_REDO},
+    
+    {"Zoom In", "확대", 322, MP_OP_ZOOM_IN},
+    {"Zoom Out", "축소", 380, MP_OP_ZOOM_OUT},
+    {"Reset View", "초기화", 438, MP_OP_ZOOM_RESET},
+    
+    {"Grayscale", "흑백 변환", 512, MP_OP_GRAYSCALE},
+    {"Colorize", "컬러화", 570, MP_OP_COLORIZE},
+    {"Invert", "색상 반전", 628, MP_OP_INVERT},
+    {"Flip H", "좌우 반전", 686, MP_OP_FLIP_H},
+    {"Flip V", "상하 반전", 744, MP_OP_FLIP_V}
 };
 
 static void mp_gui_draw_sidebar(cairo_t* cr, int h, mp_language_mode mode) {
@@ -353,31 +357,41 @@ static void mp_gui_draw_sidebar(cairo_t* cr, int h, mp_language_mode mode) {
     for (int i = 0; i < num_buttons; i++) {
         int y = 110 + g_buttons[i].y_offset;
         
-        /* Button Background / 버튼 배경 */
-        cairo_set_source_rgba(cr, 1, 1, 1, 0.15);
-        cairo_rectangle(cr, 20, y, 160, 40);
+        /* Premium Button Background / 프리미엄 버튼 배경 */
+        cairo_set_source_rgba(cr, 1, 1, 1, 0.12);
+        cairo_rectangle(cr, 10, y, 180, 52); /* Larger button / 더 큰 버튼 */
         cairo_fill(cr);
+        
+        /* Subtle border / 은은한 테두리 */
+        cairo_set_source_rgba(cr, 1, 1, 1, 0.2);
+        cairo_set_line_width(cr, 0.5);
+        cairo_rectangle(cr, 10, y, 180, 52);
+        cairo_stroke(cr);
         
         /* Button Text / 버튼 텍스트 */
         cairo_set_source_rgb(cr, 1, 1, 1);
-        cairo_move_to(cr, 40, y + 25);
         
         if (mode == MP_LANG_EN) {
             cairo_select_font_face(cr, "Inter", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+            cairo_set_font_size(cr, 11);
+            cairo_move_to(cr, 25, y + 30);
             cairo_show_text(cr, g_buttons[i].label_en);
         } else if (mode == MP_LANG_KR) {
-            cairo_select_font_face(cr, g_system_font, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD); /* Use detected font */
-            cairo_show_text(cr, g_buttons[i].label_kr);
-            cairo_select_font_face(cr, "Inter", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD); /* Reset */
-        } else {
-            /* Bilingual Mode / 이중 언어 모드 - Show abbreviated both / 양쪽 다 약어로 표시 */
-            cairo_set_font_size(cr, 9);
-            cairo_show_text(cr, g_buttons[i].label_en);
-            cairo_move_to(cr, 40, y + 35);
             cairo_select_font_face(cr, g_system_font, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+            cairo_set_font_size(cr, 13);
+            cairo_move_to(cr, 25, y + 30);
             cairo_show_text(cr, g_buttons[i].label_kr);
-            cairo_set_font_size(cr, 10); /* Reset */
+        } else {
+            /* Bilingual Mode / 이중 언어 모드 - High Density / 고밀도 */
             cairo_select_font_face(cr, "Inter", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+            cairo_set_font_size(cr, 10);
+            cairo_move_to(cr, 25, y + 22);
+            cairo_show_text(cr, g_buttons[i].label_en);
+            
+            cairo_select_font_face(cr, g_system_font, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+            cairo_set_font_size(cr, 10);
+            cairo_move_to(cr, 25, y + 42);
+            cairo_show_text(cr, g_buttons[i].label_kr);
         }
     }
 }
@@ -481,9 +495,14 @@ static void mp_gui_draw_monster_bg(cairo_t* cr, int w, int h) {
     /* Logo or text / 로고 또는 텍스트 */
     cairo_set_source_rgb(cr, 1, 1, 1);
     cairo_select_font_face(cr, "Inter", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size(cr, 32);
-    cairo_move_to(cr, w * 0.5 - 100, h * 0.5);
-    cairo_show_text(cr, "Many Pictures Monster");
+    cairo_set_font_size(cr, 36);
+    
+    /* Center text / 텍스트 중앙 정렬 */
+    const char* title = "Many Pictures Monster";
+    cairo_text_extents_t extents;
+    cairo_text_extents(cr, title, &extents);
+    cairo_move_to(cr, (w - extents.width) / 2.0, h / 2.0);
+    cairo_show_text(cr, title);
 }
 
 static void mp_gui_render_to_backbuffer(mp_application* app, int w, int h) {
@@ -573,11 +592,11 @@ void mp_gui_run(mp_application* app) {
                     int y = ev.xbutton.y;
                     
                     /* Sidebar Hit Testing / 사이드바 히트 테스팅 */
-                    if (x >= 20 && x <= 180) {
+                    if (x >= 10 && x <= 190) {
                         int num_buttons = sizeof(g_buttons) / sizeof(g_buttons[0]);
                         for (int i = 0; i < num_buttons; i++) {
                             int btn_y = 110 + g_buttons[i].y_offset;
-                            if (y >= btn_y && y <= btn_y + 40) {
+                            if (y >= btn_y && y <= btn_y + 52) {
                                 /* Clicked button i */
                                 if (g_buttons[i].op_type == MP_OP_OPEN_DIALOG) {
                                     /* Invoke System File Dialog / 시스템 파일 대화 상자 호출 */
@@ -854,12 +873,25 @@ mp_result mp_app_apply_operation(mp_application* app, mp_operation_type op_type)
     
     mp_result result = MP_SUCCESS;
     
-    if (op_type != MP_OP_LANG_TOGGLE && op_type != MP_OP_OPEN_DIALOG &&
+    if (op_type != MP_OP_LANG_TOGGLE && op_type != MP_OP_OPEN_DIALOG && op_type != MP_OP_SAVE &&
         op_type != MP_OP_ZOOM_IN && op_type != MP_OP_ZOOM_OUT && op_type != MP_OP_ZOOM_RESET) {
         mp_app_push_undo(app);
     }
     
     switch (op_type) {
+        case MP_OP_SAVE:
+            mp_fast_printf("Saving image... / 이미지 저장 중...\n");
+            /* For now, auto-save to output.png or ask user? 
+               Let's trigger a system dialog via zenity if available */
+            if (app->current_file) {
+                 char* out = mp_malloc(512);
+                 snprintf(out, 512, "%s_monster.png", app->current_file);
+                 mp_app_save_image(app, out);
+                 mp_free(out);
+            } else {
+                 mp_app_save_image(app, "monster_artifact.png");
+            }
+            return MP_SUCCESS;
         case MP_OP_GRAYSCALE:
             mp_fast_printf("Applying grayscale conversion... / 그레이스케일 변환 적용 중...\n");
             result = mp_op_to_grayscale(app->current_image);
