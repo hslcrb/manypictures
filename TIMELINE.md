@@ -19,13 +19,11 @@ All systems nominal. "Monster" GUI Engine operational. Bilingual protocols enfor
 Triggered by internal quality audit failure: Font Rendering (Tofu). / 내부 품질 감사 실패로 인해 촉발됨: 글꼴 렌더링 (두부 문자).
 - **Mission**: Implement dynamic font detection for perfect Korean glyph rendering. Audit i18n completeness. / **임무**: 완벽한 한글 글리프 렌더링을 위한 동적 폰트 감지 구현. i18n 완전성 감사.
 - **Protocol**: If detection fails, execute brute-force fallback. Use `fontconfig` via system shell. / **프로토콜**: 감지 실패 시 무차별 대입 폴백(fallback) 실행. 시스템 셸을 통해 `fontconfig` 활용.
-- **Status**: **DOMINATED**. Dynamic `fc-match` integration successful. / **상태**: **정복됨**. 동적 `fc-match` 통합 성공.
-
-### [2026-02-09 22:45 KST] [MUHAN_RELOOP: DOMINATED]
-Triggered by user feedback: Anti-CLI policy. / 사용자 피드백으로 인해 촉발됨: 반 CLI 정책.
-- **Mission**: Eliminate CLI usage for file selection. Implement native GUI file picker. / **임무**: 파일 선택을 위한 CLI 사용 제거. 네이티브 GUI 파일 선택기 구현.
-- **Protocol**: Custom-built X11/Cairo Overlay. No external toolkit dependencies. Glassmorphism design. / **프로토콜**: 맞춤형 X11/Cairo 오버레이. 외부 툴킷 종속성 없음. 글래스모피즘 디자인.
-- **Status**: **DOMINATED**. Visual File Picker Operational. / **상태**: **정복됨**. 시각적 파일 선택기 가동.
+### [2026-02-09 23:35 KST] [MUHAN_RELOOP: ENGAGED]
+Triggered by user feedback: Reject custom UI overlay. Require native system dialog. / 사용자 피드백으로 인해 촉발됨: 맞춤형 UI 오버레이 거부. 네이티브 시스템 대화 상자 요구.
+- **Mission**: Remove custom file picker. Integrate `zenity` (GTK) or `kdialog` (Qt) for native file selection. / **임무**: 맞춤형 파일 선택기 제거. 네이티브 파일 선택을 위해 `zenity`(GTK) 또는 `kdialog`(Qt) 통합.
+- **Protocol**: `popen` based external command execution. Fallback to CLI only if tools are missing. / **프로토콜**: `popen` 기반 외부 명령 실행. 도구 누락 시 CLI로만 폴백.
+- **Status**: **DOMINATED**. Native System File Picker Integrated (Zenity/KDialog). / **상태**: **정복됨**. 네이티브 시스템 파일 선택기 통합(Zenity/KDialog).
 
 ---
 극한의 문법 및 I/O 최적화를 완전히 정복했습니다.

@@ -8,8 +8,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <dirent.h>
-#include <sys/types.h>
+#include <stdlib.h>
+/* dirent.h removed / dirent.h 제거됨 */
 #include <ctype.h>
 
 #include <X11/Xlib.h>
@@ -21,58 +21,54 @@ static Display* g_display = NULL;
 static int g_screen = 0;
 static char g_system_font[256] = "Sans"; /* Default fallback / 기본 대체 폰트 */
 
-/* File List Management / 파일 목록 관리 */
-static void mp_gui_free_file_list(mp_application* app) {
-    if (app->file_list) {
-        for (int i = 0; i < app->file_count; i++) {
-            if (app->file_list[i]) free(app->file_list[i]);
-        }
-        free(app->file_list);
-        app->file_list = NULL;
-    }
-    app->file_count = 0;
-}
-
-static int mp_compare_strings(const void* a, const void* b) {
-    return strcmp(*(const char**)a, *(const char**)b);
-}
-
-static void mp_gui_refresh_file_list(mp_application* app) {
-    mp_gui_free_file_list(app);
+/* System File Dialog Helper / 시스템 파일 대화 상자 헬퍼 */
+static void mp_gui_open_file_dialog_system(mp_application* app) {
+    char filepath[1024] = {0};
+    FILE* fp = NULL;
     
-    DIR* d;
-    struct dirent* dir;
-    d = opendir(".");
-    if (d) {
-        /* First pass: count files / 1차 패스: 파일 수 계산 */
-        int count = 0;
-        while ((dir = readdir(d)) != NULL) {
-            char* ext = strrchr(dir->d_name, '.');
-            if (ext) {
-                /* Simple extension check / 간단한 확장자 확인 */
-                if (strstr(".jpg.jpeg.png.bmp.gif.tiff.webp.JPG.JPEG.PNG.BMP.GIF.TIFF.WEBP", ext)) {
-                    count++;
-                }
+    /* Try Zenity (GTK) first - cleaner and common on many distros / Zenity (GTK) 먼저 시도 - 많은 배포판에서 깔끔하고 일반적임 */
+    /* Note: --file-selection returns the path. --file-filter adds filter. */
+    const char* cmd_zenity = "zenity --file-selection --title=\"Select Image / 이미지 선택\" --file-filter=\"Images | *.jpg *.jpeg *.png *.bmp *.gif *.tiff *.webp\" 2>/dev/null";
+    
+    /* Try KDialog (KDE) second / KDialog (KDE) 두 번째 시도 */
+    const char* cmd_kdialog = "kdialog --getopenfilename . \"Image Files (*.jpg *.jpeg *.png *.bmp *.gif *.tiff *.webp)\" 2>/dev/null";
+    
+    mp_fast_printf("[GUI] Launching system file picker... / [GUI] 시스템 파일 선택기 실행 중...\n");
+    
+    /* 1. Attempt Zenity */
+    fp = popen(cmd_zenity, "r");
+    if (fp) {
+        if (fgets(filepath, sizeof(filepath), fp)) {
+            size_t len = strlen(filepath);
+            if (len > 0 && filepath[len-1] == '\n') filepath[len-1] = '\0';
+            pclose(fp);
+            if (strlen(filepath) > 0) {
+                mp_app_load_image(app, filepath);
             }
+            return;
         }
-        rewinddir(d);
-        
-        if (count > 0) {
-            app->file_list = (char**)calloc(count, sizeof(char*));
-            int idx = 0;
-            while ((dir = readdir(d)) != NULL) {
-                char* ext = strrchr(dir->d_name, '.');
-                if (ext && strstr(".jpg.jpeg.png.bmp.gif.tiff.webp.JPG.JPEG.PNG.BMP.GIF.TIFF.WEBP", ext)) {
-                    app->file_list[idx++] = strdup(dir->d_name);
-                }
-            }
-            app->file_count = idx;
-            
-            /* Sort list / 목록 정렬 */
-            qsort(app->file_list, app->file_count, sizeof(char*), mp_compare_strings);
-        }
-        closedir(d);
+        pclose(fp);
     }
+    
+    /* 2. Attempt KDialog if Zenity failed or cancelled (though cancelled returns empty, failed exec returns NULL usually) */
+    /* Actually prompt fallback if zenity not found. */
+    
+    fp = popen(cmd_kdialog, "r");
+    if (fp) {
+        if (fgets(filepath, sizeof(filepath), fp)) {
+            size_t len = strlen(filepath);
+            if (len > 0 && filepath[len-1] == '\n') filepath[len-1] = '\0';
+            pclose(fp);
+            if (strlen(filepath) > 0) {
+                mp_app_load_image(app, filepath);
+            }
+            return;
+        }
+        pclose(fp);
+    }
+    
+    mp_fast_fprintf(2, "[GUI] No system file picker found (zenity/kdialog). / [GUI] 시스템 파일 선택기를 찾을 수 없습니다(zenity/kdialog).\n");
+    mp_fast_fprintf(2, "[GUI] Please install 'zenity' or 'kdialog'. / 'zenity' 또는 'kdialog'를 설치해 주세요.\n");
 }
 
 /* Dynamic Font Detection / 동적 폰트 감지 */
@@ -346,85 +342,7 @@ static void mp_gui_draw_image(cairo_t* cr, mp_image* image, int w, int h) {
 
 
 
-static void mp_gui_draw_file_picker(cairo_t* cr, mp_application* app, int w, int h) {
-    /* Overlay Background / 오버레이 배경 */
-    cairo_set_source_rgba(cr, 0, 0, 0, 0.85); /* Dark semi-transparent / 어두운 반투명 */
-    cairo_rectangle(cr, 0, 0, w, h);
-    cairo_fill(cr);
-    
-    /* Dialog Box / 대화 상자 */
-    int box_w = 600;
-    int box_h = 500;
-    int box_x = (w - box_w) / 2;
-    int box_y = (h - box_h) / 2;
-    
-    /* Glassy Box / 유리 느낌 박스 */
-    cairo_set_source_rgba(cr, 1, 1, 1, 0.1);
-    cairo_rectangle(cr, box_x, box_y, box_w, box_h);
-    cairo_fill(cr);
-    
-    cairo_set_line_width(cr, 2);
-    cairo_set_source_rgb(cr, 0.3, 0.6, 0.9);
-    cairo_rectangle(cr, box_x, box_y, box_w, box_h);
-    cairo_stroke(cr);
-    
-    /* Header / 헤더 */
-    cairo_set_source_rgb(cr, 1, 1, 1);
-    cairo_set_font_size(cr, 24);
-    if (app->language_mode == MP_LANG_KR) {
-        cairo_select_font_face(cr, g_system_font, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-        cairo_move_to(cr, box_x + 20, box_y + 40);
-        cairo_show_text(cr, "이미지 파일 선택");
-    } else {
-        cairo_select_font_face(cr, "Inter", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-        cairo_move_to(cr, box_x + 20, box_y + 40);
-        cairo_show_text(cr, "Select Image File");
-    }
-    
-    /* File List / 파일 목록 */
-    int item_h = 30;
-    int list_y = box_y + 70;
-    int items_per_page = (box_h - 100) / item_h;
-    
-    cairo_set_font_size(cr, 16);
-    cairo_select_font_face(cr, g_system_font, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
-    
-    for (int i = 0; i < items_per_page; i++) {
-        int idx = app->file_list_scroll + i;
-        if (idx >= app->file_count) break;
-        
-        int item_y = list_y + i * item_h;
-        
-        /* Item Background (Hover effect simulated by just alternating for now) / 항목 배경 (현재는 교차 색상으로 시뮬레이션) */
-        if (i % 2 == 0) {
-            cairo_set_source_rgba(cr, 1, 1, 1, 0.05);
-            cairo_rectangle(cr, box_x + 10, item_y, box_w - 20, item_h);
-            cairo_fill(cr);
-        }
-        
-        cairo_set_source_rgb(cr, 0.9, 0.9, 0.9);
-        cairo_move_to(cr, box_x + 20, item_y + 20);
-        cairo_show_text(cr, app->file_list[idx]);
-    }
-    
-    /* Scrollbar indication / 스크롤바 표시 */
-    if (app->file_count > items_per_page) {
-        double scroll_r = (double)app->file_list_scroll / (app->file_count - items_per_page);
-        int bar_h = (box_h - 100) * items_per_page / app->file_count;
-        if (bar_h < 30) bar_h = 30;
-        int bar_y = list_y + scroll_r * (box_h - 100 - bar_h);
-        
-        cairo_set_source_rgba(cr, 1, 1, 1, 0.3);
-        cairo_rectangle(cr, box_x + box_w - 15, bar_y, 10, bar_h);
-        cairo_fill(cr);
-    }
-    
-    /* Instructions / 설명 */
-    cairo_set_source_rgb(cr, 0.6, 0.6, 0.6);
-    cairo_set_font_size(cr, 12);
-    cairo_move_to(cr, box_x + 20, box_y + box_h - 10);
-    cairo_show_text(cr, "Click to select / Scroll: PGUP/PGDN / ESC: Close");
-}
+
 
 static void mp_gui_draw_monster_bg(cairo_t* cr, int w, int h) {
     /* Premium Gradient Background / 프리미엄 그라데이션 배경 */
@@ -479,9 +397,7 @@ void mp_gui_run(mp_application* app) {
                     mp_gui_draw_image(cr, app->current_image, wa.width, wa.height);
                 }
                 
-                if (app->state == MP_GUI_FILE_SELECT) {
-                    mp_gui_draw_file_picker(cr, app, wa.width, wa.height);
-                }
+
                 
                 cairo_destroy(cr);
                 cairo_surface_destroy(surface);
@@ -492,70 +408,27 @@ void mp_gui_run(mp_application* app) {
                     int x = ev.xbutton.x;
                     int y = ev.xbutton.y;
                     
-                    if (app->state == MP_GUI_FILE_SELECT) {
-                        /* File Picker Interaction / 파일 선택기 상호작용 */
-                        XWindowAttributes wa;
-                        XGetWindowAttributes(g_display, ev.xexpose.window, &wa);
-                        int box_w = 600;
-                        int box_h = 500;
-                        int box_x = (wa.width - box_w) / 2;
-                        int box_y = (wa.height - box_h) / 2;
-                        int item_h = 30;
-                        int list_y = box_y + 70;
-                        int items_per_page = (box_h - 100) / item_h;
-                        
-                        /* Check click inside list / 목록 내부 클릭 확인 */
-                        if (x > box_x + 10 && x < box_x + box_w - 20 && y > list_y && y < list_y + items_per_page * item_h) {
-                            int clicked_idx = (y - list_y) / item_h;
-                            int file_idx = app->file_list_scroll + clicked_idx;
-                            
-                            if (file_idx < app->file_count) {
-                                mp_app_load_image(app, app->file_list[file_idx]);
-                                app->state = MP_GUI_NORMAL;
-                                XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
-                            }
-                        } else if (x < box_x || x > box_x + box_w || y < box_y || y > box_y + box_h) {
-                            /* Click outside to close / 외부 클릭 시 닫기 */
-                            app->state = MP_GUI_NORMAL;
-                            XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
-                        }
-                    } else {
-                        /* Normal Mode Interaction / 일반 모드 상호작용 */
-                        /* Sidebar Hit Testing / 사이드바 히트 테스팅 */
-                        if (x >= 20 && x <= 180) {
-                            for (int i = 0; i < 7; i++) {
-                                int btn_y = 70 + g_buttons[i].y_offset;
-                                if (y >= btn_y && y <= btn_y + 40) {
-                                    /* Clicked button i */
-                                    if (g_buttons[i].op_type == MP_BTN_OPEN_FILE) {
-                                        mp_gui_refresh_file_list(app);
-                                        app->state = MP_GUI_FILE_SELECT;
-                                        app->file_list_scroll = 0;
-                                        XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
-                                    } else if (g_buttons[i].op_type == MP_BTN_LANG_TOGGLE) {
-                                        app->language_mode = (app->language_mode + 1) % 3;
-                                        mp_fast_printf("[GUI] Language switched to mode %d\n", app->language_mode);
-                                        XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
-                                    } else {
-                                        mp_app_apply_operation(app, g_buttons[i].op_type);
-                                        XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
-                                    }
+                    /* Sidebar Hit Testing / 사이드바 히트 테스팅 */
+                    if (x >= 20 && x <= 180) {
+                        for (int i = 0; i < 7; i++) {
+                            int btn_y = 70 + g_buttons[i].y_offset;
+                            if (y >= btn_y && y <= btn_y + 40) {
+                                /* Clicked button i */
+                                if (g_buttons[i].op_type == MP_BTN_OPEN_FILE) {
+                                    /* Invoke System File Dialog / 시스템 파일 대화 상자 호출 */
+                                    mp_gui_open_file_dialog_system(app);
+                                    
+                                    /* Force redraw after dialog returns / 대화 상자 반환 후 강제 다시 그리기 */
+                                    XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
+                                } else if (g_buttons[i].op_type == MP_BTN_LANG_TOGGLE) {
+                                    app->language_mode = (app->language_mode + 1) % 3;
+                                    mp_fast_printf("[GUI] Language switched to mode %d\n", app->language_mode);
+                                    XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
+                                } else {
+                                    mp_app_apply_operation(app, g_buttons[i].op_type);
+                                    XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
                                 }
                             }
-                        }
-                    }
-                }
-                /* Scroll support for file picker / 파일 선택기 스크롤 지원 */
-                if (app->state == MP_GUI_FILE_SELECT) {
-                    if (ev.xbutton.button == 4) { /* Scroll Up */
-                        if (app->file_list_scroll > 0) {
-                            app->file_list_scroll--;
-                            XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
-                        }
-                    } else if (ev.xbutton.button == 5) { /* Scroll Down */
-                        if (app->file_list_scroll + 10 < app->file_count) { /* Rough check */
-                            app->file_list_scroll++;
-                            XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
                         }
                     }
                 }
@@ -563,20 +436,7 @@ void mp_gui_run(mp_application* app) {
             }
             case KeyPress: {
                 KeySym sym = XLookupKeysym(&ev.xkey, 0);
-                if (app->state == MP_GUI_FILE_SELECT) {
-                    if (sym == XK_Escape) {
-                        app->state = MP_GUI_NORMAL;
-                        XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
-                    } else if (sym == XK_Page_Up) {
-                        app->file_list_scroll = (app->file_list_scroll > 10) ? app->file_list_scroll - 10 : 0;
-                        XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
-                    } else if (sym == XK_Page_Down) {
-                        if (app->file_list_scroll + 10 < app->file_count) app->file_list_scroll += 10;
-                        XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
-                    }
-                } else {
-                    if (sym == XK_Escape || sym == XK_q || sym == XK_Q) quit = MP_TRUE;
-                }
+                if (sym == XK_Escape || sym == XK_q || sym == XK_Q) quit = MP_TRUE;
                 break;
             }
             case DestroyNotify:
@@ -602,7 +462,7 @@ void mp_app_destroy(mp_application* app) {
     if (app->current_image) mp_image_destroy(app->current_image);
     if (app->current_file) mp_free(app->current_file);
     if (app->main_window) mp_window_destroy(app->main_window);
-    mp_gui_free_file_list(app);
+
     mp_free(app);
 }
 
