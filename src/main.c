@@ -8,20 +8,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Many Pictures - Advanced Image Viewer and Editor
+/* Many Pictures - Advanced Image Viewer and Editor / 고성능 이미지 뷰어 및 편집기
  * 
- * Features:
- * - Support for BMP, PNG, JPEG, GIF, TIFF, WebP formats
- * - Video support (AVI, MP4, MKV, WebM, MOV, FLV)
- * - Color to grayscale conversion
- * - Grayscale to color conversion (AI-based)
- * - Color inversion
- * - Combined invert + grayscale operation
- * - EXIF metadata with custom history tracking
- * - Git-like history restoration from EXIF
- * - Image editing (rotate, crop, resize, flip)
- * - Brightness, contrast, saturation, hue adjustments
- * - Custom GUI system
+ * Features / 주요 기능:
+ * - Support for BMP, PNG, JPEG, GIF, TIFF, WebP formats / BMP, PNG, JPEG, GIF, TIFF, WebP 포맷 지원
+ * - Video support (AVI, MP4, MKV, WebM, MOV, FLV) / 비디오 지원 (AVI, MP4, MKV, WebM, MOV, FLV)
+ * - Color to grayscale conversion / 색상-흑백 변환
+ * - Grayscale to color conversion (AI-based) / 흑백-색상 변환 (AI 기반)
+ * - Color inversion / 색상 반전
+ * - Combined invert + grayscale operation / 반전 + 흑백 통합 연산
+ * - EXIF metadata with custom history tracking / 독자 히스토리 추적이 포함된 EXIF 메타데이터
+ * - Git-like history restoration from EXIF / EXIF 기반 Git 스타일 히스토리 복원
+ * - Image editing (rotate, crop, resize, flip) / 이미지 편집 (회전, 자르기, 크기 조절, 반전)
+ * - Brightness, contrast, saturation, hue adjustments / 밝기, 대비, 채도, 색조 조절
+ * - Custom GUI system / 독자 GUI 시스템
  */
 
 #define MP_VERSION "1.0.0"
@@ -232,10 +232,10 @@ static mp_result process_command_line(int argc, char** argv) {
 }
 
 int main(int argc, char** argv) {
-    printf("%s v%s\n", MP_NAME, MP_VERSION);
-    printf("Initializing...\n\n");
+    printf("%s v%s / %s v%s\n", MP_NAME, MP_VERSION, MP_NAME, MP_VERSION);
+    printf("Initializing... / 초기화 중...\n\n");
     
-    /* Initialize memory system */
+    /* Initialize memory system / 메모리 시스템 초기화 */
     mp_memory_init();
     
     /* Try command-line processing first */

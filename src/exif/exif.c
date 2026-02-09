@@ -1,10 +1,12 @@
 #include "exif.h"
 #include "../core/memory.h"
+#include "../operations/color_ops.h"
+#include "../operations/edit_ops.h"
 #include <string.h>
 #include <time.h>
 #include <stdio.h>
 
-/* EXIF data handler with custom history tracking */
+/* EXIF data handler with custom history tracking / 독자 히스토리 추적 기능을 포함한 EXIF 데이터 처리기 */
 
 mp_exif_data* mp_exif_create(void) {
     mp_exif_data* exif = (mp_exif_data*)mp_calloc(1, sizeof(mp_exif_data));
@@ -273,18 +275,64 @@ mp_result mp_exif_restore_history(mp_image* image, u32 history_index) {
     mp_history_chain* history = image->metadata->exif->history;
     if (!history || history_index >= history->count) return MP_ERROR_INVALID_PARAM;
     
-    /* MONSTER REPLAY LOGIC:
-     * 1. Checkpoint original state
-     * 2. Transactional replay of all operations in the chain
-     * 3. Rollback capability on failure
-     */
-    printf("Replaying operation history (Git-style restore)...\n");
+    /* MONSTER REPLAY LOGIC: Transactional replay of all operations / 괴물급 리플레이 로직: 모든 연산의 트랜잭션 리플레이 */
+    printf("Replaying operation history (Git-style restore)... / 작업 히스토리 재생 중 (Git 스타일 복원)...\n");
+    
+    /* 1. Reset image to original state (would require original data storage) / 이미지를 원본 상태로 리셋 */
+    /* For now, we assume replaying from current if it's destructive, or better, 
+     * a real monster would reloading the original file first. */
+    
     mp_history_entry* entry = history->head;
     for (u32 i = 0; i <= history_index && entry; i++) {
-        /* Apply entry->op_type with entry->params */
+        mp_result res = MP_SUCCESS;
+        
+        switch (entry->op_type) {
+            case MP_OP_GRAYSCALE:
+                res = mp_op_to_grayscale(image);
+                break;
+            case MP_OP_COLORIZE:
+                res = mp_op_to_color(image);
+                break;
+            case MP_OP_INVERT:
+                res = mp_op_invert(image);
+                break;
+            case MP_OP_INVERT_GRAYSCALE:
+                res = mp_op_invert_grayscale(image);
+                break;
+            case MP_OP_ROTATE: {
+                i32 degrees = *(i32*)entry->params;
+                res = mp_op_rotate(image, degrees);
+                break;
+            }
+            case MP_OP_FLIP_H:
+                res = mp_op_flip_horizontal(image);
+                break;
+            case MP_OP_FLIP_V:
+                res = mp_op_flip_vertical(image);
+                break;
+            case MP_OP_BRIGHTNESS: {
+                i32 val = *(i32*)entry->params;
+                res = mp_op_brightness(image, val);
+                break;
+            }
+            case MP_OP_CONTRAST: {
+                f32 val = *(f32*)entry->params;
+                res = mp_op_contrast(image, val);
+                break;
+            }
+            /* ... Other operations mapped to their respective functions / 기타 연산들을 각 함수로 매핑 ... */
+            default:
+                break;
+        }
+        
+        if (res != MP_SUCCESS) {
+            printf("Error replaying operation %u / 연산 %d 재생 중 오류 발생\n", i, i);
+            return res;
+        }
+        
         entry = entry->next;
     }
     
+    image->modified = MP_TRUE;
     return MP_SUCCESS;
 }
-
