@@ -242,37 +242,37 @@ int main(int argc, char** argv) {
     /* Try command-line processing first */
     mp_result result = process_command_line(argc, argv);
     
-    if (result == MP_ERROR_INVALID_PARAM && argc >= 2) {
-        /* Open GUI with file */
-        mp_fast_printf("Starting GUI mode...\n");
+    if ((result == MP_ERROR_INVALID_PARAM && argc >= 2) || (argc == 1)) {
+        /* Open GUI mode / GUI 모드 진입 */
+        mp_fast_printf("Starting GUI mode... / GUI 모드 시작 중...\n");
         
         if (mp_gui_init() != MP_SUCCESS) {
-            mp_fast_fprintf(2, "Error: Failed to initialize GUI\n");
+            mp_fast_fprintf(2, "Error: Failed to initialize GUI / 오류: GUI 초기화 실패\n");
             mp_memory_shutdown();
             return 1;
         }
         
         mp_application* app = mp_app_create();
         if (!app) {
-            mp_fast_fprintf(2, "Error: Failed to create application\n");
+            mp_fast_fprintf(2, "Error: Failed to create application / 오류: 애플리케이션 생성 실패\n");
             mp_gui_shutdown();
             mp_memory_shutdown();
             return 1;
         }
         
-        /* Load initial file if provided */
+        /* Load initial file if provided / 인자가 있으면 초기 파일 로드 */
         if (argc >= 2) {
             mp_app_load_image(app, argv[1]);
         }
         
-        /* Run application */
+        /* Run application / 애플리케이션 실행 */
         mp_app_run(app);
         
-        /* Cleanup */
+        /* Cleanup / 정리 */
         mp_app_destroy(app);
         mp_gui_shutdown();
     } else if (result == MP_ERROR_INVALID_PARAM) {
-        /* No arguments, show usage */
+        /* This case is now handled by GUI default or specific error / 이제 GUI 기본값 또는 특정 오류로 처리됨 */
         print_usage(argv[0]);
     }
     
