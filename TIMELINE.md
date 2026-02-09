@@ -1,6 +1,14 @@
-# TIMELINE.md - Many Pictures Project Evolution
+### [2026-02-10 01:25 KST] [MUHAN_RELOOP: ENGAGED] CI/CD & Universal Deployment
+- [ ] **GitHub Actions Integration**: `deploy.yml` implementation for Linux/Win/Mac. / **GitHub Actions 통합**: Linux/Win/Mac용 `deploy.yml` 구현.
+- [ ] **GHCR & Release Automation**: Automatic Docker push and binary release. / **GHCR 및 릴리스 자동화**: 도커 푸시 및 바이너리 릴리스 자동화.
+- [ ] **Documentation Audit v2**: Sync CI/CD info across all .md files. / **문서 감사 v2**: 모든 .md 파일에 CI/CD 정보 동기화.
 
-### [2026-02-10 00:30 KST] [MUHAN_RELOOP: DOMINATED] Extreme Low-Level Optimization
+### [2026-02-10 01:25 KST] [MUHAN_RELOOP: ENGAGED] CI/CD & Universal Deployment
+- [x] **GitHub Actions Integration**: `deploy.yml` implementation for Linux/Win/Mac. / **GitHub Actions 통합**: Linux/Win/Mac용 `deploy.yml` 구현.
+- [x] **GHCR & Release Automation**: Automatic Docker push and binary release. / **GHCR 및 릴리스 자동화**: 도커 푸시 및 바이너리 릴리스 자동화.
+- [x] **Documentation Audit v2**: Sync CI/CD info across all .md files. / **문서 감사 v2**: 모든 .md 파일에 CI/CD 정보 동기화.
+
+### [2026-02-10 01:21 KST] [MUHAN_RELOOP: DOMINATED] PNG Adam7 Interlacing Support
 - [x] Implement manual loop unrolling (8x/16x) in all pixel buffers / 모든 픽셀 버퍼에 수동 루프 언롤링(8x/16x) 적용
 - [x] Replace array indexing with naked pointer arithmetic / 배열 인덱싱을 순수 포인터 연산으로 교체
 - [x] Branchless implementation for color mapping and clamping / 색상 매핑 및 클램핑에 분기 없는 구현 적용

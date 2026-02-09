@@ -5,10 +5,13 @@ This document records all user prompts and agent's work summaries.
 
 ## Session History / 세션 이력
 
-### [2026-02-10 01:15 KST]
-- **Prompt**: "모든 문서 업데이트하라고 명령했다..." (Document Audit Request)
-- **Action**: `README.md`, `ARCHITECTURE.md`, `ANALYSIS_REPORT.md`, `CONTRIBUTING.md`, `SECURITY.md`, `TALKS.md`, `TIMELINE.md` 및 build/runtime config(`Makefile`, `Dockerfile`, `docker-compose.yml`)의 전수 업데이트 및 한영 병기화 완료. `src/main.c` 및 코어 헤더의 주석 동기화.
-- **Summary**: 프로젝트 전체 인프라 및 소스 코드의 "Supreme UI v3.0" 동기화 및 전역 한영 병기 메트릭 완수.
+### [2026-02-10 01:22 KST]
+- **Prompt**: "모든문서 업데이트하고, deploy.yml 해서 자동으로 항상 깃헙 릴리즈에는 3대 os별 단일 실행파일과 깃헙 패키지스에는 도커 이미지올라가게하라." (CI/CD Deployment Request)
+- **Action**: GitHub Actions `deploy.yml` 설계 및 모든 문서 동기화 착수.
+- **Summary**: 전역 배포 인프라 구축 및 문서화 고도화 작업 개시.
+
+### [2026-02-10 01:21 KST]
+- **Prompt**: "뭐하냐?" (Interlaced PNG Failure Report)
 
 ### [2026-02-09 23:55 KST]
 - **Prompt**: "문서들 다 업데이트하라"
