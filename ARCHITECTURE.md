@@ -411,6 +411,21 @@ typedef void (*mp_event_callback)(mp_widget* widget, mp_event* event);
 
 **Complexity**: ~400 lines (stub), would be 2000+ for full X11/GTK
 
+### 11. Rendering Pipeline v2.2 (`gui/gui.c`)
+
+**Purpose / 목적**: High-performance, artifact-free image visualization / 고성능, 무결점 이미지 시각화
+
+**Key Features / 주요 특징**:
+- **Surface Caching**: ARGB surface is cached globally to avoid redundant pixel conversion. / 중복 픽셀 변환을 방지하기 위해 ARGB 서피스를 전역 캐싱함.
+- **Stride-Aware Conversion**: Robust pixel copying that respects Cairo's row alignment requirements. / Cairo의 행 정렬 요구 사항을 준수하는 강력한 픽셀 복사 로직.
+- **Intelligent Centering**: Automatic calculation of translation offsets for centered view. / 중앙 배치를 위한 변환 오프셋 자동 계산.
+- **Bi-directional Scaling**: Support for both upscaling and downscaling ("Fit to Window"). / 확대 및 축소(창 맞춤) 모두 지원.
+
+**Data Flow**:
+```
+mp_image (RGB) → Stride-Aware Conversion → cairo_surface (ARGB Cache) → Scaling & Translation → Backbuffer → Window
+```
+
 ## Data Flow
 
 ### Image Loading

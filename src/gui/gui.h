@@ -98,12 +98,14 @@ struct mp_window {
 typedef struct {
     mp_window* main_window;
     mp_image* current_image;
+    void* image_surface; /* Cached CAIRO surface for rendering / 렌더링용 캐시된 CAIRO 서피스 */
     mp_widget* image_view;
     mp_widget* toolbar;
     mp_widget* statusbar;
     char* current_file;
     mp_bool running;
     f32 zoom_level;
+    mp_bool fit_to_window; /* Automatic scaling / 자동 크기 조정 */
     i32 scroll_x, scroll_y;
     mp_language_mode language_mode; /* Current language mode / 현재 언어 모드 */
     

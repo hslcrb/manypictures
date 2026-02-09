@@ -26,6 +26,7 @@
 static void mp_gui_request_repaint(mp_application* app);
 static void mp_gui_render_to_backbuffer(mp_application* app, int w, int h);
 static void mp_gui_draw_monster_bg(cairo_t* cr, int w, int h);
+static void mp_gui_update_image_surface(mp_application* app);
 void mp_image_record_history(mp_image* img, mp_operation_type op_type, const char* description);
 
 
@@ -319,15 +320,15 @@ static void mp_gui_draw_sidebar(cairo_t* cr, int h, mp_language_mode mode) {
     cairo_set_source_rgb(cr, 0.4, 0.7, 1.0);
     cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
     cairo_set_font_size(cr, 14);
-    cairo_move_to(cr, 20, 40);
+    cairo_move_to(cr, 20, 30);
     cairo_show_text(cr, "CHRONOS-EXIF");
-    cairo_move_to(cr, 20, 55);
+    cairo_move_to(cr, 20, 45);
     cairo_set_font_size(cr, 10);
     cairo_show_text(cr, "ARTIFACT ENGINE v2.2");
     
     cairo_set_source_rgb(cr, 0.8, 0.8, 0.8);
     cairo_set_font_size(cr, 18);
-    cairo_move_to(cr, 20, 40);
+    cairo_move_to(cr, 20, 80);
     
     /* Title Rendering / 타이틀 렌더링 */
     if (mode == MP_LANG_KR) {
@@ -340,13 +341,13 @@ static void mp_gui_draw_sidebar(cairo_t* cr, int h, mp_language_mode mode) {
     
     /* Subtle separators / 미묘한 구분선 */
     cairo_set_line_width(cr, 1.0);
-    cairo_move_to(cr, 20, 50);
-    cairo_line_to(cr, 180, 50);
+    cairo_move_to(cr, 20, 90);
+    cairo_line_to(cr, 180, 90);
     cairo_stroke(cr);
     
     /* Draw Buttons / 버튼 그리기 */
     for (int i = 0; i < 7; i++) {
-        int y = 70 + g_buttons[i].y_offset;
+        int y = 110 + g_buttons[i].y_offset;
         
         /* Button Background / 버튼 배경 */
         cairo_set_source_rgba(cr, 1, 1, 1, 0.15);
@@ -372,45 +373,70 @@ static void mp_gui_draw_sidebar(cairo_t* cr, int h, mp_language_mode mode) {
     }
 }
 
-static void mp_gui_draw_image(cairo_t* cr, mp_image* image, int w, int h) {
-    if (!image || !image->buffer || !image->buffer->data) return;
+static void mp_gui_update_image_surface(mp_application* app) {
+    if (!app || !app->current_image || !app->current_image->buffer) return;
     
-    /* Cairo expects CAIRO_FORMAT_ARGB32 (B G R A in little endian) */
-    /* Our internal format is RGB / 내부 형식은 RGB */
-    /* For "Monster" performance, we should ideally use a conversion cache / "괴물급" 성능을 위해 변환 캐시 필요 */
-    
-    int img_w = image->buffer->width;
-    int img_h = image->buffer->height;
-    
-    cairo_surface_t* img_surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, img_w, img_h);
-    unsigned char* dest = cairo_image_surface_get_data(img_surface);
-    unsigned char* src = image->buffer->data;
-    
-    /* High performance pixel conversion / 고성능 픽셀 변환 */
-    #pragma GCC unroll 4
-    for (int i = 0; i < img_w * img_h; i++) {
-        dest[i*4 + 0] = src[i*3 + 2]; /* B */
-        dest[i*4 + 1] = src[i*3 + 1]; /* G */
-        dest[i*4 + 2] = src[i*3 + 0]; /* R */
-        dest[i*4 + 3] = 255;          /* A */
+    if (app->image_surface) {
+        cairo_surface_destroy((cairo_surface_t*)app->image_surface);
+        app->image_surface = NULL;
     }
     
-    cairo_surface_mark_dirty(img_surface);
+    int w = app->current_image->buffer->width;
+    int h = app->current_image->buffer->height;
     
-    /* Scale and draw / 크기 조절 및 그리기 */
-    double scale_x = (double)(w - 240) / img_w;
-    double scale_y = (double)(h - 80) / img_h;
-    double scale = (scale_x < scale_y) ? scale_x : scale_y;
-    if (scale > 1.0) scale = 1.0;
+    /* Cairo expects CAIRO_FORMAT_ARGB32 (B G R A in little endian) */
+    cairo_surface_t* surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, w, h);
+    int stride = cairo_image_surface_get_stride(surface);
+    unsigned char* data = cairo_image_surface_get_data(surface);
+    unsigned char* src = app->current_image->buffer->data;
+    
+    /* CRITICAL FIX: Handle stride for large images to prevent overlapping/stripes */
+    /* 대형 이미지의 스트라이드를 처리하여 중첩/줄무늬 현상 방지 */
+    for (int y = 0; y < h; y++) {
+        unsigned char* row = data + y * stride;
+        unsigned char* src_row = src + y * w * 3;
+        for (int x = 0; x < w; x++) {
+            row[x*4 + 0] = src_row[x*3 + 2]; /* B */
+            row[x*4 + 1] = src_row[x*3 + 1]; /* G */
+            row[x*4 + 2] = src_row[x*3 + 0]; /* R */
+            row[x*4 + 3] = 255;               /* A */
+        }
+    }
+    
+    cairo_surface_mark_dirty(surface);
+    app->image_surface = surface;
+}
+
+static void mp_gui_draw_image(cairo_t* cr, mp_application* app, int w, int h) {
+    if (!app || !app->current_image || !app->image_surface) return;
+    
+    cairo_surface_t* img_surface = (cairo_surface_t*)app->image_surface;
+    int img_w = cairo_image_surface_get_width(img_surface);
+    int img_h = cairo_image_surface_get_height(img_surface);
+    
+    /* Automatic "Fit to Window" Scaling / 자동 "창 맞춤" 크기 조정 */
+    double scale = 1.0;
+    int view_w = w - 240;
+    int view_h = h - 80;
+    
+    if (app->fit_to_window) {
+        double scale_x = (double)view_w / img_w;
+        double scale_y = (double)view_h / img_h;
+        scale = (scale_x < scale_y) ? scale_x : scale_y;
+    } else {
+        scale = app->zoom_level;
+    }
+    
+    /* Center in view area / 뷰 영역 중앙에 배치 */
+    double tx = 220 + (view_w - img_w * scale) / 2.0;
+    double ty = 60 + (view_h - img_h * scale) / 2.0;
     
     cairo_save(cr);
-    cairo_translate(cr, 220, 60);
+    cairo_translate(cr, tx, ty);
     cairo_scale(cr, scale, scale);
     cairo_set_source_surface(cr, img_surface, 0, 0);
     cairo_paint(cr);
     cairo_restore(cr);
-    
-    cairo_surface_destroy(img_surface);
 }
 
 
@@ -453,7 +479,7 @@ static void mp_gui_render_to_backbuffer(mp_application* app, int w, int h) {
     mp_gui_draw_monster_bg(cr, w, h);
     mp_gui_draw_sidebar(cr, h, app->language_mode);
     if (app->current_image) {
-        mp_gui_draw_image(cr, app->current_image, w, h);
+        mp_gui_draw_image(cr, app, w, h);
     }
 }
 
@@ -529,7 +555,7 @@ void mp_gui_run(mp_application* app) {
                     /* Sidebar Hit Testing / 사이드바 히트 테스팅 */
                     if (x >= 20 && x <= 180) {
                         for (int i = 0; i < 7; i++) {
-                            int btn_y = 70 + g_buttons[i].y_offset;
+                            int btn_y = 110 + g_buttons[i].y_offset;
                             if (y >= btn_y && y <= btn_y + 40) {
                                 /* Clicked button i */
                                 if (g_buttons[i].op_type == MP_BTN_OPEN_FILE) {
@@ -592,11 +618,14 @@ mp_application* mp_app_create(void) {
     app->running = MP_TRUE;
     
     /* Undo/Redo Init */
+    app->undo_count = 0;
+    app->redo_count = 0;
     app->max_undo = 20;
     app->undo_stack = (mp_image_buffer**)mp_calloc(app->max_undo, sizeof(mp_image_buffer*));
     app->redo_stack = (mp_image_buffer**)mp_calloc(app->max_undo, sizeof(mp_image_buffer*));
-    app->undo_count = 0;
-    app->redo_count = 0;
+    
+    app->fit_to_window = MP_TRUE;
+    app->image_surface = NULL;
     
     return app;
 }
@@ -636,6 +665,7 @@ void mp_app_undo(mp_application* app) {
     
     /* Restore from undo */
     app->current_image->buffer = app->undo_stack[--app->undo_count];
+    mp_gui_update_image_surface(app);
     mp_image_record_history(app->current_image, MP_OP_UNDO, "Chronos-EXIF Undo");
     mp_fast_printf("[GUI] Undo performed / 실행 취소됨 (%d left)\n", app->undo_count);
 }
@@ -652,6 +682,7 @@ void mp_app_redo(mp_application* app) {
     
     /* Restore from redo */
     app->current_image->buffer = app->redo_stack[--app->redo_count];
+    mp_gui_update_image_surface(app);
     mp_image_record_history(app->current_image, MP_OP_REDO, "Chronos-EXIF Redo");
     mp_fast_printf("[GUI] Redo performed / 다시 실행됨 (%d left)\n", app->redo_count);
 }
@@ -660,6 +691,7 @@ void mp_app_destroy(mp_application* app) {
     if (!app) return;
     if (app->current_image) mp_image_destroy(app->current_image);
     if (app->current_file) mp_free(app->current_file);
+    if (app->image_surface) cairo_surface_destroy((cairo_surface_t*)app->image_surface);
     if (app->main_window) mp_window_destroy(app->main_window);
     
     for (int i = 0; i < app->undo_count; i++) mp_image_buffer_destroy(app->undo_stack[i]);
@@ -734,6 +766,7 @@ mp_result mp_app_load_image(mp_application* app, const char* filepath) {
     }
     
     app->current_image = image;
+    mp_gui_update_image_surface(app);
     
     if (app->current_file) {
         mp_free(app->current_file);
@@ -816,6 +849,7 @@ mp_result mp_app_apply_operation(mp_application* app, mp_operation_type op_type)
     }
     
     if (result == MP_SUCCESS) {
+        mp_gui_update_image_surface(app);
         mp_fast_printf("Operation completed successfully / 작업 완료\n");
     } else {
         mp_fast_fprintf(2, "Operation failed / 작업 실패\n");

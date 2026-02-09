@@ -26,7 +26,8 @@ Many Pictures is a comprehensive image viewing and editing application written e
 ### EXIF & History Tracking / EXIF 및 히스토리 추적
 - **Chronos-EXIF Artifact Engine**: Every pixel-level mutation is mathematically stamped with a unique ID, command name, and timestamp. / 모든 픽셀 수준의 변이는 고유 ID, 명령 이름 및 타임스탬프로 수학적으로 각인되어 보존됩니다.
 - **Git-Like History**: Custom history tracking embedded in EXIF / EXIF 내장형 독자 히스토리 추적
-- **Operation Recording**: Every edit recorded with chronological stamps / 모든 편집 사항을 시계열 스탬프와 함께 기록
+- **Intelligent Auto-Fit Zoom v2.2**: Advanced scaling algorithms that instantly reconcile any image dimensions with the GUI viewport. / 모든 이미지 크기를 GUI 뷰포트와 즉시 일치시키는 고급 스케일링 알고리즘입니다.
+- **Monster Engine Speed**: Optimized pixel conversion pipelines and surface caching for sub-millisecond interaction latency. / 밀리초 단위 이하의 지연 시간을 위한 최적화된 픽셀 변환 파이프라인 및 서피스 캐싱입니다.
 - **History Restoration**: Restore to any previous state (Git-like) / 이전 상태로의 복구 (Git 스타일)
 - **Checksum Verification**: SHA-256 checksums for integrity / 무결성을 위한 SHA-256 체크섬
 
