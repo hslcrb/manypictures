@@ -50,28 +50,7 @@ mp_result mp_op_invert(mp_image* image) {
     return MP_SUCCESS;
 }
 
-mp_result mp_op_invert_grayscale(mp_image* image) {
-    if (!image || !image->buffer) {
-        return MP_ERROR_INVALID_PARAM;
-    }
-    
-    mp_image_buffer* buffer = image->buffer;
-    
-    for (u32 y = 0; y < buffer->height; y++) {
-        for (u32 x = 0; x < buffer->width; x++) {
-            mp_pixel pixel = mp_image_get_pixel(buffer, x, y);
-            pixel.r = 255 - pixel.r;
-            pixel.g = 255 - pixel.g;
-            pixel.b = 255 - pixel.b;
-            u8 gray = mp_rgb_to_gray(pixel.r, pixel.g, pixel.b);
-            pixel.r = pixel.g = pixel.b = gray;
-            mp_image_set_pixel(buffer, x, y, pixel);
-        }
-    }
-    
-    image->modified = MP_TRUE;
-    return MP_SUCCESS;
-}
+
 
 void mp_rgb_to_hsv(u8 r, u8 g, u8 b, f32* h, f32* s, f32* v) {
     f32 rf = r / 255.0f;
@@ -293,86 +272,111 @@ void mp_colorization_network_destroy(mp_colorization_network* network) {
     mp_free(network);
 }
 
+/* Discrete Neural Network Engine
+ * Pure C implementation of a Multi-Layer Perceptron (MLP) for image colorization.
+ * Architecture: 9 (Input) -> 32 (Hidden) -> 16 (Hidden) -> 3 (Output)
+ */
+
+#define MP_NN_SIGMOID(x) (1.0f / (1.0f + expf(-(x))))
+#define MP_NN_RELU(x) ((x) > 0.0f ? (x) : 0.0f)
+
 void mp_colorization_predict(mp_colorization_network* network,
                              u8 gray, u8 context[8], u8* r, u8* g, u8* b) {
-    if (!network) {
+    if (!network || !network->weights) {
         *r = *g = *b = gray;
         return;
     }
     
-    /* Simplified prediction - in real implementation would do full forward pass */
-    /* For now, use heuristic based on gray value and context */
+    f32 input[9];
+    input[0] = gray / 255.0f;
+    for (int i = 0; i < 8; i++) input[i+1] = context[i] / 255.0f;
     
-    f32 gray_f = gray / 255.0f;
-    f32 context_avg = 0.0f;
-    for (u32 i = 0; i < 8; i++) {
-        context_avg += context[i] / 255.0f;
-    }
-    context_avg /= 8.0f;
+    f32 h1[32], h2[16], out[3];
+    f32* w = network->weights;
     
-    /* Simple heuristic colorization */
-    if (gray_f > 0.7f) {
-        /* Bright areas - slight warm tint */
-        *r = gray + (u8)((255 - gray) * 0.1f);
-        *g = gray;
-        *b = gray - (u8)(gray * 0.05f);
-    } else if (gray_f < 0.3f) {
-        /* Dark areas - slight cool tint */
-        *r = gray - (u8)(gray * 0.05f);
-        *g = gray;
-        *b = gray + (u8)((255 - gray) * 0.1f);
-    } else {
-        /* Mid-tones - neutral */
-        *r = *g = *b = gray;
+    /* Layer 1: Input -> Hidden 32 (Matrix Multiplication + ReLU) */
+    for (int i = 0; i < 32; i++) {
+        f32 sum = 0.0f;
+        for (int j = 0; j < 9; j++) sum += input[j] * w[j * 32 + i];
+        h1[i] = MP_NN_RELU(sum);
     }
+    w += 9 * 32;
+    
+    /* Layer 2: Hidden 32 -> Hidden 16 */
+    for (int i = 0; i < 16; i++) {
+        f32 sum = 0.0f;
+        for (int j = 0; j < 32; j++) sum += h1[j] * w[j * 16 + i];
+        h2[i] = MP_NN_RELU(sum);
+    }
+    w += 32 * 16;
+    
+    /* Layer 3: Hidden 16 -> Output 3 (Sigmoid for RGB) */
+    for (int i = 0; i < 3; i++) {
+        f32 sum = 0.0f;
+        for (int j = 0; j < 16; j++) sum += h2[j] * w[j * 3 + i];
+        out[i] = MP_NN_SIGMOID(sum);
+    }
+    
+    *r = (u8)(out[0] * 255.0f);
+    *g = (u8)(out[1] * 255.0f);
+    *b = (u8)(out[2] * 255.0f);
 }
 
 mp_result mp_op_to_color(mp_image* image) {
-    if (!image || !image->buffer) {
-        return MP_ERROR_INVALID_PARAM;
-    }
+    if (!image || !image->buffer) return MP_ERROR_INVALID_PARAM;
     
     mp_colorization_network* network = mp_colorization_network_create();
-    if (!network) {
-        return MP_ERROR_MEMORY;
-    }
+    if (!network) return MP_ERROR_MEMORY;
     
     mp_image_buffer* buffer = image->buffer;
+    u32 w = buffer->width, h = buffer->height;
     
-    for (u32 y = 0; y < buffer->height; y++) {
-        for (u32 x = 0; x < buffer->width; x++) {
-            mp_pixel pixel = mp_image_get_pixel(buffer, x, y);
-            u8 gray = mp_rgb_to_gray(pixel.r, pixel.g, pixel.b);
+    /* Monster Loop for Per-Pixel Neural Inference */
+    for (u32 y = 0; y < h; y++) {
+        for (u32 x = 0; x < w; x++) {
+            mp_pixel p = mp_image_get_pixel(buffer, x, y);
+            u8 gray = mp_rgb_to_gray(p.r, p.g, p.b);
+            u8 ctx[8];
+            /* Static neighbor offset lookup */
+            static const i8 dx[] = {-1, 0, 1, -1, 1, -1, 0, 1};
+            static const i8 dy[] = {-1, -1, -1, 0, 0, 1, 1, 1};
             
-            /* Get context pixels */
-            u8 context[8];
-            i32 dx[] = {-1, 0, 1, -1, 1, -1, 0, 1};
-            i32 dy[] = {-1, -1, -1, 0, 0, 1, 1, 1};
-            
-            for (u32 i = 0; i < 8; i++) {
-                i32 nx = x + dx[i];
-                i32 ny = y + dy[i];
-                
-                if (nx >= 0 && nx < (i32)buffer->width && ny >= 0 && ny < (i32)buffer->height) {
-                    mp_pixel ctx_pixel = mp_image_get_pixel(buffer, nx, ny);
-                    context[i] = mp_rgb_to_gray(ctx_pixel.r, ctx_pixel.g, ctx_pixel.b);
-                } else {
-                    context[i] = gray;
-                }
+            for (int i = 0; i < 8; i++) {
+                i32 nx = (i32)x + dx[i], ny = (i32)y + dy[i];
+                if (nx >= 0 && nx < (i32)w && ny >= 0 && ny < (i32)h) {
+                    mp_pixel cp = mp_image_get_pixel(buffer, (u32)nx, (u32)ny);
+                    ctx[i] = mp_rgb_to_gray(cp.r, cp.g, cp.b);
+                } else ctx[i] = gray;
             }
             
             u8 r, g, b;
-            mp_colorization_predict(network, gray, context, &r, &g, &b);
-            
-            pixel.r = r;
-            pixel.g = g;
-            pixel.b = b;
-            mp_image_set_pixel(buffer, x, y, pixel);
+            mp_colorization_predict(network, gray, ctx, &r, &g, &b);
+            p.r = r; p.g = g; p.b = b;
+            mp_image_set_pixel(buffer, x, y, p);
         }
     }
     
     mp_colorization_network_destroy(network);
-    
     image->modified = MP_TRUE;
     return MP_SUCCESS;
 }
+
+mp_result mp_op_invert_grayscale(mp_image* image) {
+    if (!image || !image->buffer) return MP_ERROR_INVALID_PARAM;
+    mp_image_buffer* buf = image->buffer;
+    
+    /* Optimized single-pass invert and grayscale using integer weights */
+    for (u32 y = 0; y < buf->height; y++) {
+        for (u32 x = 0; x < buf->width; x++) {
+            mp_pixel p = mp_image_get_pixel(buf, x, y);
+            /* Perform inversion then grayscale in fixed-point */
+            u8 ir = 255 - p.r, ig = 255 - p.g, ib = 255 - p.b;
+            u8 gray = (u8)((ir * 299 + ig * 587 + ib * 114) / 1000);
+            p.r = p.g = p.b = gray;
+            mp_image_set_pixel(buf, x, y, p);
+        }
+    }
+    image->modified = MP_TRUE;
+    return MP_SUCCESS;
+}
+

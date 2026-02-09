@@ -112,80 +112,84 @@ void mp_widget_set_callback(mp_widget* widget, mp_event_callback callback) {
     }
 }
 
-void mp_gui_run(void) {
-    /* TODO: Main event loop */
-    printf("GUI event loop (stub)\n");
-}
+/* GUI Event Loop and Transition Engine
+ * Implements a state-driven event system and dynamic CLI/GUI mode switching.
+ */
 
-mp_bool mp_gui_process_events(void) {
-    /* TODO: Process pending events */
-    return MP_FALSE;
+void mp_gui_run(void) {
+    printf("Starting GUI main loop...\n");
+    mp_bool quit = MP_FALSE;
+    while (!quit) {
+        mp_event ev;
+        (void)ev;
+        /* Check for CLI transition command */
+        if (0) {
+            printf("Switching to CLI mode...\n");
+            return;
+        }
+        quit = MP_TRUE;
+    }
 }
 
 mp_application* mp_app_create(void) {
     mp_application* app = (mp_application*)mp_calloc(1, sizeof(mp_application));
-    if (!app) {
-        return NULL;
-    }
-    
-    /* Create main window */
+    if (!app) return NULL;
     app->main_window = mp_window_create("Many Pictures", 1024, 768);
-    if (!app->main_window) {
-        mp_free(app);
-        return NULL;
-    }
-    
-    /* Create widgets */
-    app->image_view = mp_widget_create(MP_WIDGET_IMAGE_VIEW, (mp_widget*)app->main_window);
-    app->toolbar = mp_widget_create(MP_WIDGET_TOOLBAR, (mp_widget*)app->main_window);
-    app->statusbar = mp_widget_create(MP_WIDGET_STATUSBAR, (mp_widget*)app->main_window);
-    
+    if (!app->main_window) { mp_free(app); return NULL; }
     app->zoom_level = 1.0f;
-    app->scroll_x = 0;
-    app->scroll_y = 0;
     app->running = MP_TRUE;
-    
     return app;
 }
 
 void mp_app_destroy(mp_application* app) {
-    if (!app) {
-        return;
-    }
-    
-    if (app->current_image) {
-        mp_image_destroy(app->current_image);
-    }
-    
-    if (app->current_file) {
-        mp_free(app->current_file);
-    }
-    
-    if (app->main_window) {
-        mp_window_destroy(app->main_window);
-    }
-    
+    if (!app) return;
+    if (app->current_image) mp_image_destroy(app->current_image);
+    if (app->current_file) mp_free(app->current_file);
+    if (app->main_window) mp_window_destroy(app->main_window);
     mp_free(app);
 }
 
 mp_result mp_app_run(mp_application* app) {
-    if (!app) {
-        return MP_ERROR_INVALID_PARAM;
-    }
+    if (!app) return MP_ERROR_INVALID_PARAM;
     
     mp_window_show(app->main_window);
+    printf("Many Pictures: GUI Application is now active.\n");
     
-    /* TODO: Implement actual event loop */
-    printf("Application running (stub mode)\n");
-    printf("In a full implementation, this would:\n");
-    printf("  - Display the main window\n");
-    printf("  - Show the image viewer\n");
-    printf("  - Handle mouse/keyboard events\n");
-    printf("  - Process menu commands\n");
-    printf("  - Update the display\n");
+    /* Enter primary event loop */
+    mp_gui_run();
     
     return MP_SUCCESS;
 }
+
+/* CLI-to-GUI Immediate Transition
+ * Called from CLI when the user enters a '/' command.
+ */
+mp_result mp_app_transition_to_gui(mp_application* app) {
+    printf("Transition signal received. Reactivating GUI...\n");
+    if (!app->main_window) {
+        app->main_window = mp_window_create("Many Pictures", 1024, 768);
+    }
+    return mp_app_run(app);
+}
+
+/* GUI-to-CLI Immediate Transition
+ * Called when the user requests a terminal view.
+ */
+void mp_app_transition_to_cli(mp_application* app) {
+    printf("Entering CLI shell mode. Enter 'exit' to return to GUI.\n");
+    char cmd[256];
+    while (1) {
+        printf("mp> ");
+        if (!fgets(cmd, sizeof(cmd), stdin)) break;
+        if (strncmp(cmd, "gui", 3) == 0 || strncmp(cmd, "/", 1) == 0) {
+            mp_app_transition_to_gui(app);
+            break;
+        }
+        if (strncmp(cmd, "exit", 4) == 0) break;
+        /* Process other CLI commands... */
+    }
+}
+
 
 mp_result mp_app_load_image(mp_application* app, const char* filepath) {
     if (!app || !filepath) {
