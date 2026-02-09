@@ -1,3 +1,6 @@
+# Many Pictures - Supreme Docker Compose / Many Pictures - 슈프림 Docker Compose
+# Rheehose (Rhee Creative) 2008-2026
+
 version: '3.8'
 
 services:

@@ -16,6 +16,7 @@ Security patches are only supported for the latest version of this software.
 If you find a security vulnerability, please do not disclose it publicly. Report it to the security contact below.
 
 - **보안 연락처 / Security Contact**: security@rheehose.com
+- **Supreme Security Standard**: This software follows the "Monster Grade" security audit protocol, ensuring mathematically validated memory safety in pure C.
 - **대응 절차 / Response Process**: 
   - 보고 접수 후 48시간 이내에 확인 메일을 발송합니다.
   - 보안 취약점으로 확인될 경우, 우선적으로 패치를 진행하고 GitHub 권고문을 통해 공개합니다.

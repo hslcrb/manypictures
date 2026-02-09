@@ -29,37 +29,37 @@
 #define MP_NAME "Many Pictures"
 
 static void print_usage(const char* program_name) {
-    mp_fast_printf("%s v%s - Advanced Image Viewer and Editor\n\n", MP_NAME, MP_VERSION);
-    mp_fast_printf("Usage: %s [options] [file]\n\n", program_name);
-    mp_fast_printf("Options:\n");
-    mp_fast_printf("  -h, --help              Show this help message\n");
-    mp_fast_printf("  -v, --version           Show version information\n");
-    mp_fast_printf("  -g, --grayscale <file>  Convert image to grayscale\n");
-    mp_fast_printf("  -c, --colorize <file>   Convert grayscale to color\n");
-    mp_fast_printf("  -i, --invert <file>     Invert image colors\n");
-    mp_fast_printf("  -ig, --invert-gray <file> Invert and convert to grayscale\n");
-    mp_fast_printf("  -r, --rotate <deg> <file> Rotate image (90, 180, 270)\n");
-    mp_fast_printf("  -s, --resize <w>x<h> <file> Resize image\n");
-    mp_fast_printf("  -o, --output <file>     Output file path\n");
-    mp_fast_printf("  --info <file>           Show image information\n");
-    mp_fast_printf("  --history <file>        Show image history from EXIF\n");
+    mp_fast_printf("%s v%s - Advanced Image Viewer and Editor / 고성능 이미지 뷰어 및 편집기\n\n", MP_NAME, MP_VERSION);
+    mp_fast_printf("Usage / 사용법: %s [options] [file]\n\n", program_name);
+    mp_fast_printf("Options / 옵션:\n");
+    mp_fast_printf("  -h, --help              Show this help message / 이 도움말 표시\n");
+    mp_fast_printf("  -v, --version           Show version information / 버전 정보 표시\n");
+    mp_fast_printf("  -g, --grayscale <file>  Convert image to grayscale / 이미지를 흑백으로 변환\n");
+    mp_fast_printf("  -c, --colorize <file>   Convert grayscale to color / 흑백을 컬러로 변환\n");
+    mp_fast_printf("  -i, --invert <file>     Invert image colors / 이미지 색상 반전\n");
+    mp_fast_printf("  -ig, --invert-gray <file> Invert and convert to grayscale / 반전 후 흑백으로 변환\n");
+    mp_fast_printf("  -r, --rotate <deg> <file> Rotate image (90, 180, 270) / 이미지 회전\n");
+    mp_fast_printf("  -s, --resize <w>x<h> <file> Resize image / 이미지 크기 조절\n");
+    mp_fast_printf("  -o, --output <file>     Output file path / 출력 파일 경로\n");
+    mp_fast_printf("  --info <file>           Show image information / 이미지 정보 표시\n");
+    mp_fast_printf("  --history <file>        Show image history from EXIF / EXIF에서 이미지 히스토리 표시\n");
     mp_fast_printf("\n");
-    mp_fast_printf("Supported formats:\n");
+    mp_fast_printf("Supported formats / 지원 포맷:\n");
     mp_fast_printf("  Images: BMP, PNG, JPEG, GIF, TIFF, WebP, ICO, TGA, PSD\n");
     mp_fast_printf("  Videos: AVI, MP4, MKV, WebM, MOV, FLV\n");
     mp_fast_printf("\n");
-    mp_fast_printf("Examples:\n");
-    mp_fast_printf("  %s image.jpg                    # Open in GUI\n", program_name);
-    mp_fast_printf("  %s -g input.jpg -o output.jpg   # Convert to grayscale\n", program_name);
-    mp_fast_printf("  %s -c gray.jpg -o color.jpg     # Colorize grayscale\n", program_name);
-    mp_fast_printf("  %s -i input.png -o output.png   # Invert colors\n", program_name);
-    mp_fast_printf("  %s --info image.jpg             # Show image info\n", program_name);
+    mp_fast_printf("Examples / 예시:\n");
+    mp_fast_printf("  %s image.jpg                    # Open in GUI / GUI에서 열기\n", program_name);
+    mp_fast_printf("  %s -g input.jpg -o output.jpg   # Convert to grayscale / 흑백 변환\n", program_name);
+    mp_fast_printf("  %s -c gray.jpg -o color.jpg     # Colorize grayscale / 컬러화\n", program_name);
+    mp_fast_printf("  %s -i input.png -o output.png   # Invert colors / 색상 반전\n", program_name);
+    mp_fast_printf("  %s --info image.jpg             # Show image info / 이미지 정보 확인\n", program_name);
 }
 
 static void print_version(void) {
     mp_fast_printf("%s v%s\n", MP_NAME, MP_VERSION);
-    mp_fast_printf("Pure C implementation with custom codecs\n");
-    mp_fast_printf("Copyright (c) 2026\n");
+    mp_fast_printf("Pure C implementation with custom codecs / 사용자 정의 코덱을 포함한 순수 C 구현\n");
+    mp_fast_printf("Copyright (c) Rheehose (Rhee Creative) 2008-2026\n");
 }
 
 static void print_image_info(const char* filepath) {

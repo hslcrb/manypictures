@@ -1,3 +1,6 @@
+# Many Pictures - Monster Dockerfile / Many Pictures - 몬스터 Dockerfile
+# Rheehose (Rhee Creative) 2008-2026
+
 # Build stage / 빌드 단계
 FROM gcc:latest AS builder
 

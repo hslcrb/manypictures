@@ -1,4 +1,6 @@
-# Many Pictures - Makefile / Many Pictures - Makefile
+# Many Pictures - Master Makefile / Many Pictures - 마스터 메이크파일
+# Rheehose (Rhee Creative) 2008-2026
+# Project: Many Pictures (매니픽쳐스) - "Monster" Engine
 # Pure C implementation of advanced image viewer
 
 CC = gcc
@@ -156,23 +158,23 @@ analyze:
 
 # Help / 도움말
 help:
-	@echo "Many Pictures - Build System"
-	@echo "============================"
+	@echo "Many Pictures - Build System / Many Pictures - 빌드 시스템"
+	@echo "=========================================================="
 	@echo ""
-	@echo "Targets:"
-	@echo "  all        - Build the project (default)"
-	@echo "  debug      - Build with debug symbols"
-	@echo "  release    - Build optimized release version"
-	@echo "  clean      - Remove build artifacts"
-	@echo "  install    - Install to /usr/local/bin"
-	@echo "  uninstall  - Remove from /usr/local/bin"
-	@echo "  run        - Build and run the application"
-	@echo "  test       - Run basic tests"
-	@echo "  docs       - Generate documentation"
-	@echo "  stats      - Show code statistics"
-	@echo "  memcheck   - Check for memory leaks"
-	@echo "  format     - Format source code"
-	@echo "  analyze    - Run static analysis"
-	@echo "  help       - Show this help message"
+	@echo "Targets / 타겟:"
+	@echo "  all        - Build the project (default) / 프로젝트 빌드 (기본)"
+	@echo "  debug      - Build with debug symbols / 디버그 심볼 포함 빌드"
+	@echo "  release    - Build optimized release version / 최적화된 릴리스 버전 빌드"
+	@echo "  clean      - Remove build artifacts / 빌드 산출물 제거"
+	@echo "  install    - Install to /usr/local/bin / /usr/local/bin에 설치"
+	@echo "  uninstall  - Remove from /usr/local/bin / /usr/local/bin에서 제거"
+	@echo "  run        - Build and run the application / 애플리케이션 빌드 및 실행"
+	@echo "  test       - Run basic tests / 기본 테스트 실행"
+	@echo "  docs       - Generate documentation / 문서 생성"
+	@echo "  stats      - Show code statistics / 코드 통계 표시"
+	@echo "  memcheck   - Check for memory leaks / 메모리 누수 확인"
+	@echo "  format     - Format source code / 소스 코드 포맷팅"
+	@echo "  analyze    - Run static analysis / 정적 분석 실행"
+	@echo "  help       - Show this help message / 이 도움말 메시지 표시"
 
 .PHONY: all debug release clean install uninstall run test docs stats memcheck format analyze help

@@ -1,3 +1,6 @@
+# Many Pictures - Supreme Git Ignore / Many Pictures - 슈프림 Git 제외 설정
+# Rheehose (Rhee Creative) 2008-2026
+
 # Build artifacts / 빌드 산출물
 build/
 *.o
