@@ -23,6 +23,13 @@ typedef enum {
     MP_WIDGET_PANEL
 } mp_widget_type;
 
+/* Language modes / 언어 모드 */
+typedef enum {
+    MP_LANG_EN_KR, /* English & Korean (Default) / 영문 & 국문 (기본) */
+    MP_LANG_EN,    /* English Only / 영문 전용 */
+    MP_LANG_KR     /* Korean Only / 국문 전용 */
+} mp_language_mode;
+
 /* Event types */
 typedef enum {
     MP_EVENT_NONE,
@@ -96,6 +103,7 @@ typedef struct {
     mp_bool running;
     f32 zoom_level;
     i32 scroll_x, scroll_y;
+    mp_language_mode language_mode; /* Current language mode / 현재 언어 모드 */
 } mp_application;
 
 /* Initialize GUI system */

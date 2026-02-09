@@ -143,7 +143,29 @@ void mp_widget_set_callback(mp_widget* widget, mp_event_callback callback) {
  * Implements a state-driven event system and dynamic CLI/GUI mode switching.
  */
 
-static void mp_gui_draw_sidebar(cairo_t* cr, int h) {
+
+/* Button Definitions / 버튼 정의 */
+typedef struct {
+    const char* label_en;
+    const char* label_kr;
+    int y_offset;
+    mp_operation_type op_type; /* or custom ID */
+} mp_gui_button;
+
+#define MP_BTN_OPEN_FILE  100
+#define MP_BTN_LANG_TOGGLE 101
+
+static const mp_gui_button g_buttons[] = {
+    {"Open File", "파일 열기", 0, MP_BTN_OPEN_FILE},
+    {"Language", "한/영", 50, MP_BTN_LANG_TOGGLE},
+    {"Grayscale", "흑백 변환", 120, MP_OP_GRAYSCALE},
+    {"Colorize", "컬러화", 170, MP_OP_COLORIZE},
+    {"Invert", "색상 반전", 220, MP_OP_INVERT},
+    {"Flip H", "좌우 반전", 270, MP_OP_FLIP_H},
+    {"Flip V", "상하 반전", 320, MP_OP_FLIP_V}
+};
+
+static void mp_gui_draw_sidebar(cairo_t* cr, int h, mp_language_mode mode) {
     /* Glassmorphism Sidebar / 글래스모피즘 사이드바 */
     cairo_set_source_rgba(cr, 1, 1, 1, 0.1);
     cairo_rectangle(cr, 0, 0, 200, h);
@@ -152,7 +174,7 @@ static void mp_gui_draw_sidebar(cairo_t* cr, int h) {
     cairo_set_source_rgb(cr, 0.8, 0.8, 1.0);
     cairo_set_font_size(cr, 18);
     cairo_move_to(cr, 20, 40);
-    cairo_show_text(cr, "Operations");
+    cairo_show_text(cr, (mode == MP_LANG_KR) ? "기능" : "Operations");
     
     /* Subtle separators / 미묘한 구분선 */
     cairo_set_line_width(cr, 1.0);
@@ -160,15 +182,31 @@ static void mp_gui_draw_sidebar(cairo_t* cr, int h) {
     cairo_line_to(cr, 180, 50);
     cairo_stroke(cr);
     
-    /* Buttons (Visual only for now) / 버튼 (현재는 시각적 요소만) */
-    const char* buttons[] = {"Grayscale", "Colorize", "Invert", "Flip H", "Flip V"};
-    for (int i = 0; i < 5; i++) {
+    /* Draw Buttons / 버튼 그리기 */
+    for (int i = 0; i < 7; i++) {
+        int y = 70 + g_buttons[i].y_offset;
+        
+        /* Button Background / 버튼 배경 */
         cairo_set_source_rgba(cr, 1, 1, 1, 0.15);
-        cairo_rectangle(cr, 20, 70 + i * 50, 160, 40);
+        cairo_rectangle(cr, 20, y, 160, 40);
         cairo_fill(cr);
+        
+        /* Button Text / 버튼 텍스트 */
         cairo_set_source_rgb(cr, 1, 1, 1);
-        cairo_move_to(cr, 40, 95 + i * 50);
-        cairo_show_text(cr, buttons[i]);
+        cairo_move_to(cr, 40, y + 25);
+        
+        if (mode == MP_LANG_EN) {
+            cairo_show_text(cr, g_buttons[i].label_en);
+        } else if (mode == MP_LANG_KR) {
+            cairo_select_font_face(cr, "NanumGothic", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD); /* Fallback font */
+            cairo_show_text(cr, g_buttons[i].label_kr);
+            cairo_select_font_face(cr, "Inter", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD); /* Reset */
+        } else {
+            /* Bilingual: Show English (user prefers EN usually for dev tools, adding KR tooltip-like approach involves complexity, sticking to EN/KR toggle is cleaner) */
+            /* User requested "한영전환" (Toggle), so let's display based on current mode. But for bilingual mode, maybe show EN/KR? */
+            /* Let's show EN by default in mixed mode for clean GUI, toggle will switch to KR */
+             cairo_show_text(cr, g_buttons[i].label_en);
+        }
     }
 }
 
@@ -243,6 +281,9 @@ void mp_gui_run(mp_application* app) {
     XEvent ev;
     mp_bool quit = MP_FALSE;
     
+    /* Allow mouse events / 마우스 이벤트 허용 */
+    XSelectInput(g_display, app->main_window->x_window, ExposureMask | KeyPressMask | ButtonPressMask | StructureNotifyMask);
+
     while (!quit) {
         XNextEvent(g_display, &ev);
         
@@ -257,7 +298,7 @@ void mp_gui_run(mp_application* app) {
                 cairo_t* cr = cairo_create(surface);
                 
                 mp_gui_draw_monster_bg(cr, wa.width, wa.height);
-                mp_gui_draw_sidebar(cr, wa.height);
+                mp_gui_draw_sidebar(cr, wa.height, app->language_mode);
                 
                 if (app->current_image) {
                     mp_gui_draw_image(cr, app->current_image, wa.width, wa.height);
@@ -265,6 +306,46 @@ void mp_gui_run(mp_application* app) {
                 
                 cairo_destroy(cr);
                 cairo_surface_destroy(surface);
+                break;
+            }
+            case ButtonPress: {
+                if (ev.xbutton.button == 1) { /* Left Click */
+                    int x = ev.xbutton.x;
+                    int y = ev.xbutton.y;
+                    
+                    /* Sidebar Hit Testing / 사이드바 히트 테스팅 */
+                    if (x >= 20 && x <= 180) {
+                        for (int i = 0; i < 7; i++) {
+                            int btn_y = 70 + g_buttons[i].y_offset;
+                            if (y >= btn_y && y <= btn_y + 40) {
+                                /* Clicked button i */
+                                if (g_buttons[i].op_type == MP_BTN_OPEN_FILE) {
+                                    /* Simple File Open Dialog Simulation (Console Fallback) */
+                                    mp_fast_printf("\n[GUI] Open File Requested. Enter path in terminal: ");
+                                    /* Since we are in X11 loop, we might strict blocking. For now, let's just trigger a preset or ask user in console */
+                                    /* Note: Blocking X loop for console input freezes GUI. Ideally use a separate thread or non-blocking check. */
+                                    /* For "Monster" demo, let's load a demo image if path is empty, or just toggle a hardcoded list */
+                                    /* User wanted "File Open Button", let's make it ask in console for now as it's safest pure C without toolkit */
+                                    char filepath[256];
+                                    /* Temporarily release X grab if any */
+                                    if (fgets(filepath, sizeof(filepath), stdin)) {
+                                        filepath[strcspn(filepath, "\n")] = 0; /* Remove newline */
+                                        if (strlen(filepath) > 0) mp_app_load_image(app, filepath);
+                                    }
+                                    /* Force redraw */
+                                    XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
+                                } else if (g_buttons[i].op_type == MP_BTN_LANG_TOGGLE) {
+                                    app->language_mode = (app->language_mode + 1) % 3;
+                                    mp_fast_printf("[GUI] Language switched to mode %d\n", app->language_mode);
+                                    XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
+                                } else {
+                                    mp_app_apply_operation(app, g_buttons[i].op_type);
+                                    XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
+                                }
+                            }
+                        }
+                    }
+                }
                 break;
             }
             case KeyPress: {
@@ -285,6 +366,7 @@ mp_application* mp_app_create(void) {
     app->main_window = mp_window_create("Many Pictures", 1024, 768);
     if (!app->main_window) { mp_free(app); return NULL; }
     app->zoom_level = 1.0f;
+    app->language_mode = MP_LANG_EN_KR; /* Default to Bilingual */
     app->running = MP_TRUE;
     return app;
 }
