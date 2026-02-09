@@ -261,26 +261,37 @@ mp_image* mp_png_load(const char* filepath) {
             return NULL;
     }
     
-    if (ihdr.interlace != 0) {
-        mp_fast_fprintf(2, "[PNG] Error: Interlaced PNGs are not supported yet.\n");
-        mp_free(idat_data);
-        return NULL;
+    /* Decompress IDAT */
+    size_t scanline_size = ihdr.width * bytes_per_pixel + 1;
+    size_t raw_size;
+    
+    if (ihdr.interlace == 0) {
+        raw_size = scanline_size * ihdr.height;
+    } else {
+        /* Calculate Adam7 total raw size / Adam7 전체 원본 데이터 크기 계산 */
+        static const u8 x_orig[] = {0, 4, 0, 2, 0, 1, 0};
+        static const u8 y_orig[] = {0, 0, 4, 0, 2, 0, 1};
+        static const u8 x_step[] = {8, 8, 4, 4, 2, 2, 1};
+        static const u8 y_step[] = {8, 8, 8, 4, 4, 2, 2};
+        
+        raw_size = 0;
+        for (int p = 0; p < 7; p++) {
+            u32 pw = (ihdr.width - x_orig[p] + x_step[p] - 1) / x_step[p];
+            u32 ph = (ihdr.height - y_orig[p] + y_step[p] - 1) / y_step[p];
+            if (pw > 0 && ph > 0) {
+                raw_size += (pw * bytes_per_pixel + 1) * ph;
+            }
+        }
     }
     
-    /* Decompress IDAT */
-    size_t scanline_size = ihdr.width * bytes_per_pixel + 1; /* +1 for filter byte */
-    size_t raw_size = scanline_size * ihdr.height;
     u8* raw_data = (u8*)mp_malloc(raw_size);
-    
     if (!raw_data) {
         mp_free(idat_data);
         return NULL;
     }
     
-    /* Skip ZLIB header (2 bytes) */
     mp_deflate_stream stream;
     mp_deflate_init(&stream, idat_data + 2, idat_size - 2, raw_data, raw_size);
-    
     mp_result result = mp_deflate_decompress(&stream);
     mp_free(idat_data);
     
@@ -296,38 +307,81 @@ mp_image* mp_png_load(const char* filepath) {
         return NULL;
     }
     
-    /* Unfilter and copy scanlines */
-    u8* prev_scanline = NULL;
-    for (u32 y = 0; y < ihdr.height; y++) {
-        u8* scanline = raw_data + y * scanline_size;
-        u8 filter_type = scanline[0];
-        u8* pixel_data = scanline + 1;
-        
-        mp_png_unfilter_scanline(pixel_data, prev_scanline, 
-                                 ihdr.width * bytes_per_pixel, bytes_per_pixel, filter_type);
-        
-        /* Copy to image buffer */
-        if (ihdr.color_type == PNG_COLOR_PALETTE) {
-            for (u32 x = 0; x < ihdr.width; x++) {
-                u8 index = pixel_data[x];
-                mp_pixel p = {0, 0, 0, 255};
-                if (index < palette_size) {
-                    p.r = palette[index].r;
-                    p.g = palette[index].g;
-                    p.b = palette[index].b;
+    if (ihdr.interlace == 0) {
+        /* Standard non-interlaced processing / 표준 비인터레이스 처리 */
+        u8* prev_scanline = NULL;
+        for (u32 y = 0; y < ihdr.height; y++) {
+            u8* scanline = raw_data + y * scanline_size;
+            u8 filter_type = scanline[0];
+            u8* pixel_data = scanline + 1;
+            
+            mp_png_unfilter_scanline(pixel_data, prev_scanline, 
+                                     ihdr.width * bytes_per_pixel, bytes_per_pixel, filter_type);
+            
+            if (ihdr.color_type == PNG_COLOR_PALETTE) {
+                for (u32 x = 0; x < ihdr.width; x++) {
+                    u8 index = pixel_data[x];
+                    mp_pixel p = {0, 0, 0, 255};
+                    if (index < palette_size) {
+                        p.r = palette[index].r; p.g = palette[index].g; p.b = palette[index].b;
+                    }
+                    mp_image_set_pixel(image->buffer, x, y, p);
                 }
-                mp_image_set_pixel(image->buffer, x, y, p);
+            } else {
+                memcpy(image->buffer->data + y * image->buffer->stride, pixel_data, 
+                       ihdr.width * bytes_per_pixel);
             }
-        } else {
-            memcpy(image->buffer->data + y * image->buffer->stride, pixel_data, 
-                   ihdr.width * bytes_per_pixel);
+            prev_scanline = pixel_data;
         }
+    } else {
+        /* Adam7 Interlaced Processing / Adam7 인터레이스 처리 */
+        static const u8 x_orig[] = {0, 4, 0, 2, 0, 1, 0};
+        static const u8 y_orig[] = {0, 0, 4, 0, 2, 0, 1};
+        static const u8 x_step[] = {8, 8, 4, 4, 2, 2, 1};
+        static const u8 y_step[] = {8, 8, 8, 4, 4, 2, 2};
         
-        prev_scanline = pixel_data;
+        u8* current_raw_ptr = raw_data;
+        for (int p = 0; p < 7; p++) {
+            u32 pw = (ihdr.width - x_orig[p] + x_step[p] - 1) / x_step[p];
+            u32 ph = (ihdr.height - y_orig[p] + y_step[p] - 1) / y_step[p];
+            if (pw == 0 || ph == 0) continue;
+            
+            u32 pass_scanline_size = pw * bytes_per_pixel + 1;
+            u8* prev_pass_scanline = NULL;
+            
+            for (u32 py = 0; py < ph; py++) {
+                u8* scanline = current_raw_ptr + py * pass_scanline_size;
+                u8 filter_type = scanline[0];
+                u8* pixel_data = scanline + 1;
+                
+                mp_png_unfilter_scanline(pixel_data, prev_pass_scanline, 
+                                         pw * bytes_per_pixel, bytes_per_pixel, filter_type);
+                
+                /* Map sub-pixels to final image / 서브 픽셀을 최종 이미지에 맵핑 */
+                for (u32 px = 0; px < pw; px++) {
+                    u32 final_x = x_orig[p] + px * x_step[p];
+                    u32 final_y = y_orig[p] + py * y_step[p];
+                    
+                    if (ihdr.color_type == PNG_COLOR_PALETTE) {
+                         u8 index = pixel_data[px];
+                         mp_pixel pix = {0, 0, 0, 255};
+                         if (index < palette_size) {
+                             pix.r = palette[index].r; pix.g = palette[index].g; pix.b = palette[index].b;
+                         }
+                         mp_image_set_pixel(image->buffer, final_x, final_y, pix);
+                    } else {
+                        u8* src = pixel_data + px * bytes_per_pixel;
+                        u8* dest = image->buffer->data + final_y * image->buffer->stride + final_x * bytes_per_pixel;
+                        memcpy(dest, src, bytes_per_pixel);
+                    }
+                }
+                prev_pass_scanline = pixel_data;
+            }
+            current_raw_ptr += ph * pass_scanline_size;
+        }
     }
     
     mp_free(raw_data);
-    
     return image;
 }
 
