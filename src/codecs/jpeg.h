@@ -5,18 +5,18 @@
 
 /* JPEG codec implementation */
 
-/* JPEG markers */
-#define JPEG_MARKER_SOI  0xFFD8  /* Start of Image */
-#define JPEG_MARKER_EOI  0xFFD9  /* End of Image */
-#define JPEG_MARKER_SOF0 0xFFC0  /* Start of Frame (Baseline DCT) */
-#define JPEG_MARKER_SOF2 0xFFC2  /* Start of Frame (Progressive DCT) */
-#define JPEG_MARKER_DHT  0xFFC4  /* Define Huffman Table */
-#define JPEG_MARKER_DQT  0xFFDB  /* Define Quantization Table */
-#define JPEG_MARKER_DRI  0xFFDD  /* Define Restart Interval */
-#define JPEG_MARKER_SOS  0xFFDA  /* Start of Scan */
-#define JPEG_MARKER_APP0 0xFFE0  /* JFIF marker */
-#define JPEG_MARKER_APP1 0xFFE1  /* EXIF marker */
-#define JPEG_MARKER_COM  0xFFFE  /* Comment */
+/* JPEG markers / JPEG 마커 */
+#define JPEG_MARKER_SOI  0xFFD8  /* Start of Image / 이미지 시작 */
+#define JPEG_MARKER_EOI  0xFFD9  /* End of Image / 이미지 끝 */
+#define JPEG_MARKER_SOF0 0xFFC0  /* Start of Frame (Baseline DCT) / 프레임 시작 (베이스라인 DCT) */
+#define JPEG_MARKER_SOF2 0xFFC2  /* Start of Frame (Progressive DCT) / 프레임 시작 (프로그레시브 DCT) */
+#define JPEG_MARKER_DHT  0xFFC4  /* Define Huffman Table / 허프만 테이블 정의 */
+#define JPEG_MARKER_DQT  0xFFDB  /* Define Quantization Table / 양자화 테이블 정의 */
+#define JPEG_MARKER_DRI  0xFFDD  /* Define Restart Interval / 재시작 간격 정의 */
+#define JPEG_MARKER_SOS  0xFFDA  /* Start of Scan / 스캔 시작 */
+#define JPEG_MARKER_APP0 0xFFE0  /* JFIF marker / JFIF 마커 */
+#define JPEG_MARKER_APP1 0xFFE1  /* EXIF marker / EXIF 마커 */
+#define JPEG_MARKER_COM  0xFFFE  /* Comment / 주석 */
 
 /* JPEG component */
 typedef struct {
@@ -64,26 +64,26 @@ typedef struct {
     u8 quant_tables[4][64];
 } jpeg_encoder;
 
-/* Initialize JPEG decoder */
+/* Initialize JPEG decoder / JPEG 디코더 초기화 */
 jpeg_decoder* mp_jpeg_decoder_create(const u8* data, size_t size);
 
-/* Destroy JPEG decoder */
+/* Destroy JPEG decoder / JPEG 디코더 제거 */
 void mp_jpeg_decoder_destroy(jpeg_decoder* decoder);
 
-/* Decode JPEG image */
+/* Decode JPEG image / JPEG 이미지 디코딩 */
 mp_result mp_jpeg_decode(jpeg_decoder* decoder, mp_image_buffer** out_buffer);
 
-/* Initialize JPEG encoder */
+/* Initialize JPEG encoder / JPEG 인코더 초기화 */
 jpeg_encoder* mp_jpeg_encoder_create(u8 quality);
 
-/* Destroy JPEG encoder */
+/* Destroy JPEG encoder / JPEG 인코더 제거 */
 void mp_jpeg_encoder_destroy(jpeg_encoder* encoder);
 
-/* Encode image to JPEG */
+/* Encode image to JPEG / 이미지를 JPEG로 인코딩 */
 mp_result mp_jpeg_encode(jpeg_encoder* encoder, const mp_image_buffer* buffer,
                          u8** out_data, size_t* out_size);
 
-/* DCT and IDCT */
+/* DCT and IDCT / DCT 및 IDCT */
 void mp_jpeg_fdct(const i16 input[64], i16 output[64]);
 void mp_jpeg_idct(const i16 input[64], i16 output[64]);
 

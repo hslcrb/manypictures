@@ -7,8 +7,8 @@ This document records all user prompts and agent's work summaries.
 
 ### [2026-02-10 01:22 KST]
 - **Prompt**: "모든문서 업데이트하고, deploy.yml 해서 자동으로 항상 깃헙 릴리즈에는 3대 os별 단일 실행파일과 깃헙 패키지스에는 도커 이미지올라가게하라." (CI/CD Deployment Request)
-- **Action**: GitHub Actions `deploy.yml` 설계 및 모든 문서 동기화 착수.
-- **Summary**: 전역 배포 인프라 구축 및 문서화 고도화 작업 개시.
+- **Action**: GitHub Actions `deploy.yml` 설계 및 모든 문서 동기화 착수. Linux/Windows/macOS 바이너리 및 GHCR 도커 이미지 배포 지원 완료.
+- **Summary**: 전역 배포 인프라 구축 및 문서화 고도화 작업 완수 및 정복.
 
 ### [2026-02-10 01:21 KST]
 - **Prompt**: "뭐하냐?" (Interlaced PNG Failure Report)
