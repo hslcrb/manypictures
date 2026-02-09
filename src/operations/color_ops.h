@@ -35,21 +35,7 @@ void mp_rgb_to_hsv(u8 r, u8 g, u8 b, f32* h, f32* s, f32* v);
 /* Convert HSV to RGB */
 void mp_hsv_to_rgb(f32 h, f32 s, f32 v, u8* r, u8* g, u8* b);
 
-/* Colorization neural network (simplified) */
-typedef struct {
-    f32* weights;
-    u32 layer_sizes[8];
-    u32 num_layers;
-} mp_colorization_network;
-
-/* Initialize colorization network */
-mp_colorization_network* mp_colorization_network_create(void);
-
-/* Destroy colorization network */
-void mp_colorization_network_destroy(mp_colorization_network* network);
-
-/* Predict color for grayscale pixel */
-void mp_colorization_predict(mp_colorization_network* network, 
-                             u8 gray, u8 context[8], u8* r, u8* g, u8* b);
+/* Predict color for grayscale pixel (Spectral Projection) */
+void mp_colorization_predict(u8 gray, u8 context[8], u8* r, u8* g, u8* b);
 
 #endif /* MANYPICTURES_COLOR_OPS_H */

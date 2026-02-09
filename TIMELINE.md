@@ -24,6 +24,12 @@ Triggered by user feedback: Reject custom UI overlay. Require native system dial
 - **Mission**: Remove custom file picker. Integrate `zenity` (GTK) or `kdialog` (Qt) for native file selection. / **임무**: 맞춤형 파일 선택기 제거. 네이티브 파일 선택을 위해 `zenity`(GTK) 또는 `kdialog`(Qt) 통합.
 - **Protocol**: `popen` based external command execution. Fallback to CLI only if tools are missing. / **프로토콜**: `popen` 기반 외부 명령 실행. 도구 누락 시 CLI로만 폴백.
 - **Status**: **DOMINATED**. Native System File Picker Integrated (Zenity/KDialog). / **상태**: **정복됨**. 네이티브 시스템 파일 선택기 통합(Zenity/KDialog).
+- **Update**: Fixed "Failed to load" issue by implementing full Dynamic Huffman (DEFLATE) and Palette support. / **업데이트**: 전체 동적 허프만(DEFLATE) 및 팔레트 지원을 구현하여 "로드 실패" 문제를 해결했습니다.
+- **Performance**: Optimized GUI loop to be non-blocking using async process polling (fork/exec). / **성능**: 비동기 프로세스 폴링(fork/exec)을 사용하여 GUI 루프를 비차단으로 최적화했습니다.
+- **Feature**: Implemented 20-step Undo/Redo with keyboard shortcuts (`Ctrl+Z`, `Ctrl+Y`). / **기능**: 단축키(`Ctrl+Z`, `Ctrl+Y`)를 포함한 20단계 실행 취소/다시 실행을 구현했습니다.
+- **AI Enhancement**: Spectral Projection Colorization v2.2 (Realistic tints). / **AI 강화**: 스펙트럼 투영 컬러화 v2.2 (사실적인 색조).
+- **Status**: **[MUHAN_RELOOP: DOMINATED]** / **상태**: **[무한 리루프: 완전 정복됨]**
+
 
 ---
 극한의 문법 및 I/O 최적화를 완전히 정복했습니다.

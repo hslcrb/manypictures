@@ -236,152 +236,43 @@ mp_result mp_op_hue(mp_image* image, i32 degrees) {
     return MP_SUCCESS;
 }
 
-/* Enhanced colorization network creation (v2.1) / 강화된 컬러화 신경망 생성 (v2.1) */
-mp_colorization_network* mp_colorization_network_create(void) {
-    mp_colorization_network* network = (mp_colorization_network*)mp_malloc(sizeof(mp_colorization_network));
-    if (!network) return NULL;
-    
-    /* Deep 5-layer network: 9 (Input) -> 64 (H1) -> 32 (H2) -> 16 (H3) -> 3 (Output)
-     * 심층 5층 신경망 구조: 입력(9) -> 은닉1(64) -> 은닉2(32) -> 은닉3(16) -> 출력(3)
+void mp_colorization_predict(u8 gray, u8 context[8], u8* r, u8* g, u8* b) {
+    /* "Monster" Grade Spectral Projection Colorization / "괴물급" 스펙트럼 투영 컬러화
+     * We use a deterministic but highly non-linear mapping to create vibrant colors from grayscale.
      */
-    network->num_layers = 5;
-    network->layer_sizes[0] = 9;
-    network->layer_sizes[1] = 64;
-    network->layer_sizes[2] = 32;
-    network->layer_sizes[3] = 16;
-    network->layer_sizes[4] = 3;
+    f32 g_norm = gray / 255.0f;
     
-    /* Allocate weights for the deeper architecture / 심층 아키텍처를 위한 가중치 할당
-     * Total weights = (9*64) + (64*32) + (32*16) + (16*3) = 3184
-     */
-    u32 total_weights = (9 * 64) + (64 * 32) + (32 * 16) + (16 * 3);
-    network->weights = (f32*)mp_malloc(total_weights * sizeof(f32));
-    
-    if (!network->weights) {
-        mp_free(network);
-        return NULL;
-    }
-    
-    /* Initial weights are handled by mp_colorization_network_init_weights / 초기 가중치는 init 함수에서 처리됨 */
-    memset(network->weights, 0, total_weights * sizeof(f32));
-    
-    return network;
-}
+    /* Calculate neighborhood variance for texture-aware tinting / 질감 인식 틴팅을 위한 주변부 분산 계산 */
+    f32 avg_ctx = 0;
+    for (int i = 0; i < 8; i++) avg_ctx += context[i];
+    avg_ctx /= 8.0f;
+    f32 var = 0;
+    for (int i = 0; i < 8; i++) var += fabsf(context[i] - avg_ctx);
+    var /= 255.0f;
 
-void mp_colorization_network_destroy(mp_colorization_network* network) {
-    if (!network) {
-        return;
-    }
+    /* Base Spectral Mapping / 기본 스펙트럼 매핑 */
+    f32 h = 200.0f + 60.0f * sinf(g_norm * M_PI * 1.5f + var * 2.0f); /* Hue shift based on luminence and detail */
+    f32 s = 0.3f + 0.4f * (1.0f - g_norm) + var * 0.5f; /* Higher saturation in shadows and detailed areas */
+    f32 v = g_norm * 0.9f + 0.1f;
     
-    if (network->weights) {
-        mp_free(network->weights);
-    }
+    if (s > 0.8f) s = 0.8f;
     
-    mp_free(network);
-}
-
-/* Discrete Neural Network Engine (Enhanced v2.1)
- * Pure C implementation of a Deep Multi-Layer Perceptron (MLP) for image colorization.
- * 아키텍처 / Architecture: 9 (Input) -> 64 (H1) -> 32 (H2) -> 16 (H3) -> 3 (Output)
- */
-
-#define MP_NN_SIGMOID(x) (1.0f / (1.0f + expf(-(x))))
-#define MP_NN_LRELU(x) ((x) > 0.0f ? (x) : (x) * 0.01f) /* Leaky ReLU to avoid dying neurons / 뉴런 소멸 방지 */
-
-/* He Initialization for weights / 가중치 He 초기화
- * Standard deviation = sqrt(2/fan_in)
- */
-/* Monster deterministic weight initialization (mimics pre-trained state) / 괴물급 결정론적 가중치 초기화 (사전 학습 상태 모사) */
-void mp_colorization_network_init_weights(mp_colorization_network* network) {
-    if (!network || !network->weights) return;
+    mp_hsv_to_rgb(h, s, v, r, g, b);
     
-    mp_fast_printf("Initializing Monster implementation weights (Deterministic AI approximation)... / 괴물급 구현 가중치 초기화 중 (결정론적 AI 근사)...\n");
-    f32* w = network->weights;
-    
-    u32 fan_ins[] = {9, 64, 32, 16};
-    u32 layer_sizes[] = {64, 32, 16, 3};
-    
-    for (int l = 0; l < 4; l++) {
-        f32 stddev = sqrtf(2.0f / fan_ins[l]);
-        u32 num_weights = fan_ins[l] * layer_sizes[l];
-        for (u32 i = 0; i < num_weights; i++) {
-            /* Hybrid weight generator: mixing sine waves for complex features / 하이브리드 가중치 생성기: 복잡한 특성을 위한 사인파 혼합 */
-            f32 angle = (f32)i * (0.01f * (l + 1));
-            f32 val = sinf(angle) * cosf(angle * 1.5f + 0.5f);
-            *w++ = val * stddev;
-        }
-    }
-}
-
-void mp_colorization_predict(mp_colorization_network* network,
-                             u8 gray, u8 context[8], u8* r, u8* g, u8* b) {
-    if (!network || !network->weights) {
-        *r = *g = *b = gray;
-        return;
-    }
-    
-    f32 input[9];
-    input[0] = gray / 255.0f;
-    for (int i = 0; i < 8; i++) input[i+1] = context[i] / 255.0f;
-    
-    f32 h1[64], h2[32], h3[16], out[3];
-    const f32* w = network->weights;
-    
-    /* Layer 1: 9 -> 64 (Full unrolling and pointer pre-fetching) / 출력 노드 기준 포인터 프리페칭을 통한 1층 연산 */
-    for (int i = 0; i < 64; i++) {
-        f32 sum = 0.0f;
-        const f32* row_w = w + (i);
-        #pragma GCC unroll 9
-        for (int j = 0; j < 9; j++) sum += input[j] * row_w[j * 64];
-        h1[i] = MP_NN_LRELU(sum);
-    }
-    w += 576;
-    
-    /* Layer 2: 64 -> 32 */
-    for (int i = 0; i < 32; i++) {
-        f32 sum = 0.0f;
-        const f32* row_w = w + (i);
-        for (int j = 0; j < 64; j++) sum += h1[j] * row_w[j * 32];
-        h2[i] = MP_NN_LRELU(sum);
-    }
-    w += 2048;
-    
-    /* Layer 3: 32 -> 16 */
-    for (int i = 0; i < 16; i++) {
-        f32 sum = 0.0f;
-        const f32* row_w = w + (i);
-        for (int j = 0; j < 32; j++) sum += h2[j] * row_w[j * 16];
-        h3[i] = MP_NN_LRELU(sum);
-    }
-    w += 512;
-    
-    /* Layer 4: 16 -> 3 */
-    for (int i = 0; i < 3; i++) {
-        f32 sum = 0.0f;
-        const f32* row_w = w + (i);
-        for (int j = 0; j < 16; j++) sum += h3[j] * row_w[j * 3];
-        out[i] = MP_NN_SIGMOID(sum);
-    }
-    
-    *r = (u8)(out[0] * 255.0f);
-    *g = (u8)(out[1] * 255.0f);
-    *b = (u8)(out[2] * 255.0f);
+    /* Mix with original gray to maintain structure / 구조 유지를 위해 원본 그레이와 혼합 */
+    *r = (u8)(*r * 0.8f + gray * 0.2f);
+    *g = (u8)(*g * 0.8f + gray * 0.2f);
+    *b = (u8)(*b * 0.8f + gray * 0.2f);
 }
 
 mp_result mp_op_to_color(mp_image* image) {
     if (!image || !image->buffer) return MP_ERROR_INVALID_PARAM;
     
-    mp_fast_printf("Starting neural colorization (Deep MLP 5-layer)... / 신경망 컬러화 시작 (심층 MLP 5층 구조)...\n");
-    mp_colorization_network* network = mp_colorization_network_create();
-    if (!network) return MP_ERROR_MEMORY;
-    
-    /* Initialize with He weights / He 가중치로 초기화 */
-    mp_colorization_network_init_weights(network);
+    mp_fast_printf("Starting Spectral Colorization (Monster v2.2)... / 스펙트럼 컬러화 시작 (Monster v2.2)...\n");
     
     mp_image_buffer* buffer = image->buffer;
     u32 w = buffer->width, h = buffer->height;
     
-    /* Monster Loop for Per-Pixel Neural Inference / 픽셀별 신경망 추론을 위한 거대 루프 */
     for (u32 y = 0; y < h; y++) {
         for (u32 x = 0; x < w; x++) {
             mp_pixel p = mp_image_get_pixel(buffer, x, y);
@@ -400,15 +291,13 @@ mp_result mp_op_to_color(mp_image* image) {
             }
             
             u8 r, g, b;
-            mp_colorization_predict(network, gray, ctx, &r, &g, &b);
+            mp_colorization_predict(gray, ctx, &r, &g, &b);
             p.r = r; p.g = g; p.b = b;
             mp_image_set_pixel(buffer, x, y, p);
         }
     }
     
-    mp_colorization_network_destroy(network);
     image->modified = MP_TRUE;
-    mp_fast_printf("Colorization complete. / 컬러화 완료.\n");
     return MP_SUCCESS;
 }
 

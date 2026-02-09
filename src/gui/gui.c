@@ -486,8 +486,26 @@ void mp_gui_run(mp_application* app) {
                 break;
             }
             case KeyPress: {
-                KeySym sym = XLookupKeysym(&ev.xkey, 0);
-                if (sym == XK_Escape || sym == XK_q || sym == XK_Q) quit = MP_TRUE;
+                XKeyEvent* xkey = &ev.xkey;
+                KeySym sym = XLookupKeysym(xkey, 0);
+                mp_bool ctrl = (xkey->state & ControlMask) != 0;
+                mp_bool shift = (xkey->state & ShiftMask) != 0;
+
+                if (ctrl) {
+                    if (sym == XK_z || sym == XK_Z) {
+                        if (shift) mp_app_redo(app);
+                        else mp_app_undo(app);
+                        XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
+                    } else if (sym == XK_y || sym == XK_Y) {
+                        mp_app_redo(app);
+                        XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
+                    } else if (sym == XK_o || sym == XK_O) {
+                        mp_gui_open_file_dialog_system(app);
+                        XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
+                    }
+                } else {
+                    if (sym == XK_Escape || sym == XK_q || sym == XK_Q) quit = MP_TRUE;
+                }
                 break;
             }
             case DestroyNotify:
@@ -509,7 +527,68 @@ mp_application* mp_app_create(void) {
     app->zoom_level = 1.0f;
     app->language_mode = MP_LANG_EN_KR; /* Default to Bilingual */
     app->running = MP_TRUE;
+    
+    /* Undo/Redo Init */
+    app->max_undo = 20;
+    app->undo_stack = (mp_image_buffer**)mp_calloc(app->max_undo, sizeof(mp_image_buffer*));
+    app->redo_stack = (mp_image_buffer**)mp_calloc(app->max_undo, sizeof(mp_image_buffer*));
+    app->undo_count = 0;
+    app->redo_count = 0;
+    
     return app;
+}
+
+static void mp_app_clear_redo(mp_application* app) {
+    for (int i = 0; i < app->redo_count; i++) {
+        mp_image_buffer_destroy(app->redo_stack[i]);
+    }
+    app->redo_count = 0;
+}
+
+static void mp_app_push_undo(mp_application* app) {
+    if (!app || !app->current_image) return;
+    
+    /* If full, shift */
+    if (app->undo_count == app->max_undo) {
+        mp_image_buffer_destroy(app->undo_stack[0]);
+        for (int i = 0; i < app->max_undo - 1; i++) {
+            app->undo_stack[i] = app->undo_stack[i+1];
+        }
+        app->undo_count--;
+    }
+    
+    app->undo_stack[app->undo_count++] = mp_image_buffer_clone(app->current_image->buffer);
+    mp_app_clear_redo(app);
+}
+
+void mp_app_undo(mp_application* app) {
+    if (!app || !app->current_image || app->undo_count == 0) return;
+    
+    /* Push current to redo */
+    if (app->redo_count < app->max_undo) {
+        app->redo_stack[app->redo_count++] = app->current_image->buffer;
+    } else {
+        mp_image_buffer_destroy(app->current_image->buffer);
+    }
+    
+    /* Restore from undo */
+    app->current_image->buffer = app->undo_stack[--app->undo_count];
+    mp_fast_printf("[GUI] Undo performed / 실행 취소됨 (%d left)\n", app->undo_count);
+}
+
+void mp_app_redo(mp_application* app) {
+    if (!app || !app->current_image || app->redo_count == 0) return;
+    
+    /* Push current to undo */
+    if (app->undo_count < app->max_undo) {
+        app->undo_stack[app->undo_count++] = app->current_image->buffer;
+    } else {
+        mp_image_buffer_destroy(app->current_image->buffer);
+    }
+    
+    /* Restore from redo */
+    app->current_image->buffer = app->redo_stack[--app->redo_count];
+    mp_fast_printf("[GUI] Redo performed / 다시 실행됨 (%d left)\n", app->redo_count);
 }
 
 void mp_app_destroy(mp_application* app) {
@@ -517,6 +596,11 @@ void mp_app_destroy(mp_application* app) {
     if (app->current_image) mp_image_destroy(app->current_image);
     if (app->current_file) mp_free(app->current_file);
     if (app->main_window) mp_window_destroy(app->main_window);
+    
+    for (int i = 0; i < app->undo_count; i++) mp_image_buffer_destroy(app->undo_stack[i]);
+    for (int i = 0; i < app->redo_count; i++) mp_image_buffer_destroy(app->redo_stack[i]);
+    mp_free(app->undo_stack);
+    mp_free(app->redo_stack);
 
     mp_free(app);
 }
@@ -568,8 +652,12 @@ mp_result mp_app_load_image(mp_application* app, const char* filepath) {
         return MP_ERROR_INVALID_PARAM;
     }
     
-    mp_fast_printf("Loading image / 이미지 로딩: %s\n", filepath);
-    
+    /* Clear stacks when loading new image / 새로운 이미지 로드 시 스택 초기화 */
+    for (int i = 0; i < app->undo_count; i++) mp_image_buffer_destroy(app->undo_stack[i]);
+    for (int i = 0; i < app->redo_count; i++) mp_image_buffer_destroy(app->redo_stack[i]);
+    app->undo_count = 0;
+    app->redo_count = 0;
+
     mp_image* image = mp_image_load(filepath);
     if (!image) {
         mp_fast_fprintf(2, "Failed to load image / 이미지 로드 실패: %s\n", filepath);
@@ -621,6 +709,10 @@ mp_result mp_app_apply_operation(mp_application* app, mp_operation_type op_type)
     }
     
     mp_result result = MP_SUCCESS;
+    
+    if (op_type != MP_BTN_LANG_TOGGLE && op_type != MP_BTN_OPEN_FILE) {
+        mp_app_push_undo(app);
+    }
     
     switch (op_type) {
         case MP_OP_GRAYSCALE:

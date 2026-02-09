@@ -105,6 +105,13 @@ typedef struct {
     i32 scroll_x, scroll_y;
     mp_language_mode language_mode; /* Current language mode / 현재 언어 모드 */
     
+    /* Undo/Redo System / 실행 취소/다시 실행 시스템 */
+    mp_image_buffer** undo_stack;
+    mp_image_buffer** redo_stack;
+    int undo_count;
+    int redo_count;
+    int max_undo;
+    
     /* Non-blocking Dialog State / 비차단 대화 상자 상태 */
     int dialog_fd;
     int dialog_pid;
@@ -166,5 +173,11 @@ mp_result mp_app_save_image(mp_application* app, const char* filepath);
 
 /* Apply operation to current image */
 mp_result mp_app_apply_operation(mp_application* app, mp_operation_type op_type);
+
+/* Undo/Redo */
+void mp_app_undo(mp_application* app);
+void mp_app_redo(mp_application* app);
+
+/* Transition between CLI and GUI */
 
 #endif /* MANYPICTURES_GUI_H */
