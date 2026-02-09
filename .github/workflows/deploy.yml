@@ -62,7 +62,7 @@ jobs:
       contents: read
       packages: write
     needs: build-binaries
-    if: github.event_ref == 'refs/heads/main' || github.event_ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
 
     steps:
       - name: Checkout repository / 저장소 체크아웃
@@ -86,8 +86,10 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ id.meta.outputs.tags }}
-          labels: ${{ id.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+附录一 算法及源码
+
 
   release:
     name: Create Release / 릴리스 생성
