@@ -24,9 +24,9 @@ Many Pictures is a comprehensive image viewing and editing application written e
 - **Brightness/Contrast**: Advanced tone curve adjustments / 고급 톤 커브 및 밝기/대비 조절
 
 ### EXIF & History Tracking / EXIF 및 히스토리 추적
-- **EXIF Reader/Writer**: Full EXIF metadata support / 전체 EXIF 메타데이터 지원
+- **Chronos-EXIF Artifact Engine**: Every pixel-level mutation is mathematically stamped with a unique ID, command name, and timestamp. / 모든 픽셀 수준의 변이는 고유 ID, 명령 이름 및 타임스탬프로 수학적으로 각인되어 보존됩니다.
 - **Git-Like History**: Custom history tracking embedded in EXIF / EXIF 내장형 독자 히스토리 추적
-- **Operation Recording**: Every edit recorded with parameters / 모든 편집 사항을 파라미터와 함께 기록
+- **Operation Recording**: Every edit recorded with chronological stamps / 모든 편집 사항을 시계열 스탬프와 함께 기록
 - **History Restoration**: Restore to any previous state (Git-like) / 이전 상태로의 복구 (Git 스타일)
 - **Checksum Verification**: SHA-256 checksums for integrity / 무결성을 위한 SHA-256 체크섬
 

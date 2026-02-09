@@ -33,6 +33,7 @@ mp_result mp_op_to_grayscale(mp_image* image) {
     }
     
     image->modified = MP_TRUE;
+    mp_image_record_history(image, MP_OP_GRAYSCALE, "Converted to Grayscale");
     return MP_SUCCESS;
 }
 
@@ -54,6 +55,7 @@ mp_result mp_op_invert(mp_image* image) {
     }
     
     image->modified = MP_TRUE;
+    mp_image_record_history(image, MP_OP_INVERT, "Inverted Colors");
     return MP_SUCCESS;
 }
 
@@ -151,6 +153,7 @@ mp_result mp_op_brightness(mp_image* image, i32 value) {
     }
     
     image->modified = MP_TRUE;
+    mp_image_record_history(image, MP_OP_BRIGHTNESS, "Adjusted Brightness");
     return MP_SUCCESS;
 }
 
@@ -179,6 +182,7 @@ mp_result mp_op_contrast(mp_image* image, f32 value) {
     }
     
     image->modified = MP_TRUE;
+    mp_image_record_history(image, MP_OP_CONTRAST, "Adjusted Contrast");
     return MP_SUCCESS;
 }
 
@@ -206,6 +210,7 @@ mp_result mp_op_saturation(mp_image* image, f32 value) {
     }
     
     image->modified = MP_TRUE;
+    mp_image_record_history(image, MP_OP_SATURATION, "Adjusted Saturation");
     return MP_SUCCESS;
 }
 
@@ -233,6 +238,7 @@ mp_result mp_op_hue(mp_image* image, i32 degrees) {
     }
     
     image->modified = MP_TRUE;
+    mp_image_record_history(image, MP_OP_HUE, "Adjusted Hue");
     return MP_SUCCESS;
 }
 
@@ -298,6 +304,7 @@ mp_result mp_op_to_color(mp_image* image) {
     }
     
     image->modified = MP_TRUE;
+    mp_image_record_history(image, MP_OP_COLORIZE, "Applied Spectral Colorization (v2.2)");
     return MP_SUCCESS;
 }
 
@@ -318,6 +325,7 @@ mp_result mp_op_invert_grayscale(mp_image* image) {
         }
     }
     image->modified = MP_TRUE;
+    mp_image_record_history(image, MP_OP_INVERT_GRAYSCALE, "Inverted and Grayscaled");
     return MP_SUCCESS;
 }
 

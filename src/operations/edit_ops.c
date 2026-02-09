@@ -55,6 +55,7 @@ mp_result mp_op_rotate(mp_image* image, i32 degrees) {
     mp_image_buffer_destroy(old_buffer);
     image->buffer = new_buffer;
     image->modified = MP_TRUE;
+    mp_image_record_history(image, MP_OP_ROTATE, "Rotated Image");
     
     return MP_SUCCESS;
 }
@@ -77,6 +78,7 @@ mp_result mp_op_flip_horizontal(mp_image* image) {
     }
     
     image->modified = MP_TRUE;
+    mp_image_record_history(image, MP_OP_FLIP_H, "Flipped Horizontally");
     return MP_SUCCESS;
 }
 
@@ -98,6 +100,7 @@ mp_result mp_op_flip_vertical(mp_image* image) {
     }
     
     image->modified = MP_TRUE;
+    mp_image_record_history(image, MP_OP_FLIP_V, "Flipped Vertically");
     return MP_SUCCESS;
 }
 
@@ -127,6 +130,7 @@ mp_result mp_op_crop(mp_image* image, u32 x, u32 y, u32 width, u32 height) {
     mp_image_buffer_destroy(old_buffer);
     image->buffer = new_buffer;
     image->modified = MP_TRUE;
+    mp_image_record_history(image, MP_OP_CROP, "Cropped Image");
     
     return MP_SUCCESS;
 }
@@ -213,6 +217,7 @@ mp_result mp_op_resize_ex(mp_image* image, u32 new_width, u32 new_height,
     mp_image_buffer_destroy(old_buffer);
     image->buffer = new_buffer;
     image->modified = MP_TRUE;
+    mp_image_record_history(image, MP_OP_RESIZE, "Resized Image");
     
     return MP_SUCCESS;
 }

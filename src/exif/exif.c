@@ -15,8 +15,8 @@ mp_exif_data* mp_exif_create(void) {
         return NULL;
     }
     
-    /* Set default software tag */
-    strncpy(exif->software, "Many Pictures v1.0", sizeof(exif->software) - 1);
+    /* Set default software tag / 기본 소프트웨어 태그 설정 */
+    strncpy(exif->software, "Chronos-EXIF Artifact Engine v2.2 (Monster)", sizeof(exif->software) - 1);
     
     /* Get current time */
     time_t now = time(NULL);
@@ -69,6 +69,7 @@ mp_result mp_exif_add_history(mp_exif_data* exif, mp_operation_type op_type,
         return MP_ERROR_MEMORY;
     }
     
+    entry->id = exif->history->count + 1; /* Number Stamp / 일련 번호 */
     entry->op_type = op_type;
     entry->timestamp = (u64)time(NULL);
     

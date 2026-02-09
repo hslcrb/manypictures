@@ -26,6 +26,7 @@
 static void mp_gui_request_repaint(mp_application* app);
 static void mp_gui_render_to_backbuffer(mp_application* app, int w, int h);
 static void mp_gui_draw_monster_bg(cairo_t* cr, int w, int h);
+void mp_image_record_history(mp_image* img, mp_operation_type op_type, const char* description);
 
 
 static Display* g_display = NULL;
@@ -314,7 +315,17 @@ static void mp_gui_draw_sidebar(cairo_t* cr, int h, mp_language_mode mode) {
     cairo_rectangle(cr, 0, 0, 200, h);
     cairo_fill(cr);
     
-    cairo_set_source_rgb(cr, 0.8, 0.8, 1.0);
+    /* System Branding / 시스템 브랜딩 */
+    cairo_set_source_rgb(cr, 0.4, 0.7, 1.0);
+    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_set_font_size(cr, 14);
+    cairo_move_to(cr, 20, 40);
+    cairo_show_text(cr, "CHRONOS-EXIF");
+    cairo_move_to(cr, 20, 55);
+    cairo_set_font_size(cr, 10);
+    cairo_show_text(cr, "ARTIFACT ENGINE v2.2");
+    
+    cairo_set_source_rgb(cr, 0.8, 0.8, 0.8);
     cairo_set_font_size(cr, 18);
     cairo_move_to(cr, 20, 40);
     
@@ -433,6 +444,11 @@ static void mp_gui_render_to_backbuffer(mp_application* app, int w, int h) {
     if (!app || !app->main_window || !app->main_window->back_context) return;
     cairo_t* cr = (cairo_t*)app->main_window->back_context;
     
+    /* Reset state / 상태 초기화 */
+    cairo_identity_matrix(cr);
+    cairo_new_path(cr);
+    cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
+    
     /* Draw to off-screen buffer / 오프스크린 버퍼에 그리기 */
     mp_gui_draw_monster_bg(cr, w, h);
     mp_gui_draw_sidebar(cr, h, app->language_mode);
@@ -447,8 +463,12 @@ static void mp_gui_request_repaint(mp_application* app) {
     XGetWindowAttributes(g_display, app->main_window->x_window, &wa);
     mp_gui_render_to_backbuffer(app, wa.width, wa.height);
     
-    /* Trigger Expose without clearing (background is None) / 지우지 않고 Expose 트리거 (배경이 None임) */
+    /* Flush Cairo to backbuffer surface / Cairo를 백버퍼 서피스로 플러시 */
+    cairo_surface_flush((cairo_surface_t*)app->main_window->back_surface);
+    
+    /* Trigger Expose without clearing (background is None) / 지우지 않고 Expose 트리거 */
     XClearArea(g_display, app->main_window->x_window, 0, 0, 0, 0, True);
+    XFlush(g_display);
 }
 
 void mp_gui_run(mp_application* app) {
@@ -616,6 +636,7 @@ void mp_app_undo(mp_application* app) {
     
     /* Restore from undo */
     app->current_image->buffer = app->undo_stack[--app->undo_count];
+    mp_image_record_history(app->current_image, MP_OP_UNDO, "Chronos-EXIF Undo");
     mp_fast_printf("[GUI] Undo performed / 실행 취소됨 (%d left)\n", app->undo_count);
 }
 
@@ -631,6 +652,7 @@ void mp_app_redo(mp_application* app) {
     
     /* Restore from redo */
     app->current_image->buffer = app->redo_stack[--app->redo_count];
+    mp_image_record_history(app->current_image, MP_OP_REDO, "Chronos-EXIF Redo");
     mp_fast_printf("[GUI] Redo performed / 다시 실행됨 (%d left)\n", app->redo_count);
 }
 
@@ -718,6 +740,7 @@ mp_result mp_app_load_image(mp_application* app, const char* filepath) {
     }
     app->current_file = mp_strdup(filepath);
     
+    mp_image_record_history(image, MP_OP_LOAD, "Loaded Image Artifact");
     mp_fast_printf("Image loaded / 이미지 로드됨: %ux%u\n", image->buffer->width, image->buffer->height);
     
     return MP_SUCCESS;

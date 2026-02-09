@@ -1,5 +1,11 @@
 # TIMELINE.md - Many Pictures Project Evolution
 
+### [2026-02-09 23:15 KST] [MUHAN_RELOOP: ENGAGED] Chronos-EXIF & GUI Sync Fix
+- [ ] Fix image refresh bug (Displaying old image after new load) / 이미지 새로고침 버그 수정 (새 로드 후 이전 이미지 표시)
+- [ ] Implement "Chronos-EXIF Artifact Engine" / "Chronos-EXIF Artifact Engine" 구현
+- [ ] Auto-recording for every modification with Stamp (ID + CMD + TS) / 모든 수정 사항에 대한 스탬프(ID + 명령 + 타임스탬프) 자동 기록
+- [ ] Final Verification & Push / 최종 검증 및 푸시
+
 ---
 ### [2026-02-09 21:21 KST] [MUHAN_RELOOP: ENGAGED] [LOOP_MODE: ACTIVE] Global Infrastructure Domination
 사용자로부터 `muhan-reloop` 및 `ralph-loop-global` 전역 적용을 명령받았습니다.

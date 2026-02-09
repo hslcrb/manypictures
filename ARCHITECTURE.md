@@ -343,12 +343,13 @@ EXIF Data:
 **History Entry**:
 ```c
 typedef struct mp_history_entry {
-    mp_operation_type op_type;    // Operation type
-    u64 timestamp;                // Unix timestamp
-    char description[256];        // Description
-    u8 params[512];              // Parameters
-    u32 param_size;              // Parameter size
-    u8 checksum[32];             // SHA-256 checksum
+    u32 id;                       /* Number Stamp / 일련 번호 */
+    mp_operation_type op_type;    /* Operation type / 연산 유형 */
+    u64 timestamp;                /* Unix timestamp / 유닉스 타임스탬프 */
+    char description[256];        /* Command Name / 명령명 */
+    u8 params[512];               /* Parameters / 파라미터 */
+    u32 param_size;               /* Parameter size / 파라미터 크기 */
+    u8 checksum[32];              /* SHA-256 integrity / SHA-256 무결성 */
     struct mp_history_entry* next;
     struct mp_history_entry* prev;
 } mp_history_entry;
