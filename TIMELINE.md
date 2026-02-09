@@ -1,5 +1,13 @@
 # TIMELINE.md - Many Pictures Project Evolution
 
+### [2026-02-10 00:30 KST] [MUHAN_RELOOP: DOMINATED] Extreme Low-Level Optimization
+- [x] Implement manual loop unrolling (8x/16x) in all pixel buffers / 모든 픽셀 버퍼에 수동 루프 언롤링(8x/16x) 적용
+- [x] Replace array indexing with naked pointer arithmetic / 배열 인덱싱을 순수 포인터 연산으로 교체
+- [x] Branchless implementation for color mapping and clamping / 색상 매핑 및 클램핑에 분기 없는 구현 적용
+- [x] Use `__builtin_expect` and `restrict` qualifiers for compiler hints / 컴파일러 힌트를 위한 `__builtin_expect` 및 `restrict` 한정자 사용
+- [x] Implementation of Lookup Tables (LUT) for brightness/contrast / 밝기/대비용 LUT 구현
+- [x] Monster Row-Level Swap/Copy for Rotate/Crop/Flip / 회전/자르기/반전용 Monster 행 단위 스왑/복사 구현
+
 ### [2026-02-09 23:45 KST] [MUHAN_RELOOP: DOMINATED] Rendering Fix & Performance Boost
 - [x] Fix long/large image overlap (stride bug) / 긴/대형 이미지 중첩 현상 수정 (스트라이드 버그)
 - [x] Implement automatic "Fit to Window" zoom / 자동 "창 맞춤" 줌 구현

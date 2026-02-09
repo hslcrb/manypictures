@@ -32,23 +32,41 @@ mp_result mp_op_rotate(mp_image* image, i32 degrees) {
         return MP_ERROR_MEMORY;
     }
     
-    for (u32 y = 0; y < old_buffer->height; y++) {
-        for (u32 x = 0; x < old_buffer->width; x++) {
-            mp_pixel pixel = mp_image_get_pixel(old_buffer, x, y);
-            u32 new_x, new_y;
-            
-            if (degrees == 90) {
-                new_x = old_buffer->height - 1 - y;
-                new_y = x;
-            } else if (degrees == 180) {
-                new_x = old_buffer->width - 1 - x;
-                new_y = old_buffer->height - 1 - y;
-            } else { /* 270 */
-                new_x = y;
-                new_y = old_buffer->width - 1 - x;
+    u32 bpp = old_buffer->bpp;
+    u32 old_w = old_buffer->width;
+    u32 old_h = old_buffer->height;
+    u8* restrict src = old_buffer->data;
+    u8* restrict dst = new_buffer->data;
+
+    /* Extreme optimization: Dedicated loops for specific rotations / 극한 최적화: 특정 회전을 위한 전용 루프 */
+    if (degrees == 90) {
+        for (u32 y = 0; y < old_h; y++) {
+            u8* src_row = src + y * old_buffer->stride;
+            for (u32 x = 0; x < old_w; x++) {
+                u32 new_x = old_h - 1 - y;
+                u32 new_y = x;
+                u8* dst_px = dst + new_y * new_buffer->stride + new_x * bpp;
+                memcpy(dst_px, src_row + x * bpp, bpp);
             }
-            
-            mp_image_set_pixel(new_buffer, new_x, new_y, pixel);
+        }
+    } else if (degrees == 180) {
+        for (u32 y = 0; y < old_h; y++) {
+            u8* src_row = src + y * old_buffer->stride;
+            u8* dst_row = dst + (old_h - 1 - y) * new_buffer->stride;
+            for (u32 x = 0; x < old_w; x++) {
+                u32 new_x = old_w - 1 - x;
+                memcpy(dst_row + new_x * bpp, src_row + x * bpp, bpp);
+            }
+        }
+    } else if (degrees == 270) {
+        for (u32 y = 0; y < old_h; y++) {
+            u8* src_row = src + y * old_buffer->stride;
+            for (u32 x = 0; x < old_w; x++) {
+                u32 new_x = y;
+                u32 new_y = old_w - 1 - x;
+                u8* dst_px = dst + new_y * new_buffer->stride + new_x * bpp;
+                memcpy(dst_px, src_row + x * bpp, bpp);
+            }
         }
     }
     
@@ -66,19 +84,38 @@ mp_result mp_op_flip_horizontal(mp_image* image) {
     }
     
     mp_image_buffer* buffer = image->buffer;
+    u32 bpp = buffer->bpp;
+    u32 width = buffer->width;
+    u32 height = buffer->height;
+    u32 stride = buffer->stride;
+    u8* data = buffer->data;
     
-    for (u32 y = 0; y < buffer->height; y++) {
-        for (u32 x = 0; x < buffer->width / 2; x++) {
-            u32 mirror_x = buffer->width - 1 - x;
-            mp_pixel left = mp_image_get_pixel(buffer, x, y);
-            mp_pixel right = mp_image_get_pixel(buffer, mirror_x, y);
-            mp_image_set_pixel(buffer, x, y, right);
-            mp_image_set_pixel(buffer, mirror_x, y, left);
+    /* Extreme optimization: Targeted pointer reversal / 극한 최적화: 정밀 포인터 반전 */
+    for (u32 y = 0; y < height; y++) {
+        u8* left = data + y * stride;
+        u8* right = left + (width - 1) * bpp;
+        while (left < right) {
+            /* Swap pixels based on bpp / bpp에 따른 픽셀 스왑 */
+            if (bpp == 3) {
+                u8 t0 = left[0], t1 = left[1], t2 = left[2];
+                left[0] = right[0]; left[1] = right[1]; left[2] = right[2];
+                right[0] = t0; right[1] = t1; right[2] = t2;
+            } else if (bpp == 4) {
+                u32* lp = (u32*)left;
+                u32* rp = (u32*)right;
+                u32 tmp = *lp; *lp = *rp; *rp = tmp;
+            } else {
+                for (u32 k = 0; k < bpp; k++) {
+                    u8 tmp = left[k]; left[k] = right[k]; right[k] = tmp;
+                }
+            }
+            left += bpp;
+            right -= bpp;
         }
     }
     
     image->modified = MP_TRUE;
-    mp_image_record_history(image, MP_OP_FLIP_H, "Flipped Horizontally");
+    mp_image_record_history(image, MP_OP_FLIP_H, "Flipped Horizontally (Monster Optimized)");
     return MP_SUCCESS;
 }
 
@@ -88,19 +125,25 @@ mp_result mp_op_flip_vertical(mp_image* image) {
     }
     
     mp_image_buffer* buffer = image->buffer;
+    u32 stride = buffer->stride;
+    u8* temp_row = (u8*)mp_malloc(stride);
+    if (!temp_row) return MP_ERROR_MEMORY;
     
-    for (u32 y = 0; y < buffer->height / 2; y++) {
-        u32 mirror_y = buffer->height - 1 - y;
-        for (u32 x = 0; x < buffer->width; x++) {
-            mp_pixel top = mp_image_get_pixel(buffer, x, y);
-            mp_pixel bottom = mp_image_get_pixel(buffer, x, mirror_y);
-            mp_image_set_pixel(buffer, x, y, bottom);
-            mp_image_set_pixel(buffer, x, mirror_y, top);
-        }
+    u8* data = buffer->data;
+    u32 h = buffer->height;
+    
+    /* Extreme optimization: Row-level swapping with memcpy / 극한 최적화: memcpy를 사용한 행 단위 스왑 */
+    for (u32 y = 0; y < h / 2; y++) {
+        u8* top = data + y * stride;
+        u8* bottom = data + (h - 1 - y) * stride;
+        memcpy(temp_row, top, stride);
+        memcpy(top, bottom, stride);
+        memcpy(bottom, temp_row, stride);
     }
     
+    mp_free(temp_row);
     image->modified = MP_TRUE;
-    mp_image_record_history(image, MP_OP_FLIP_V, "Flipped Vertically");
+    mp_image_record_history(image, MP_OP_FLIP_V, "Flipped Vertically (Monster Row-Swap)");
     return MP_SUCCESS;
 }
 
@@ -120,30 +163,27 @@ mp_result mp_op_crop(mp_image* image, u32 x, u32 y, u32 width, u32 height) {
         return MP_ERROR_MEMORY;
     }
     
+    u32 bpp = old_buffer->bpp;
+    u32 old_stride = old_buffer->stride;
+    u32 new_stride = new_buffer->stride;
+    u8* src = old_buffer->data + y * old_stride + x * bpp;
+    u8* dst = new_buffer->data;
+    
+    /* Extreme optimization: Row-level copy via memcpy / 극한 최적화: memcpy를 이용한 행 단위 복사 */
     for (u32 ny = 0; ny < height; ny++) {
-        for (u32 nx = 0; nx < width; nx++) {
-            mp_pixel pixel = mp_image_get_pixel(old_buffer, x + nx, y + ny);
-            mp_image_set_pixel(new_buffer, nx, ny, pixel);
-        }
+        memcpy(dst, src, width * bpp);
+        src += old_stride;
+        dst += new_stride;
     }
     
     mp_image_buffer_destroy(old_buffer);
     image->buffer = new_buffer;
     image->modified = MP_TRUE;
-    mp_image_record_history(image, MP_OP_CROP, "Cropped Image");
+    mp_image_record_history(image, MP_OP_CROP, "Cropped Image (Monster Row-Copy)");
     
     return MP_SUCCESS;
 }
 
-static mp_pixel mp_sample_nearest(const mp_image_buffer* buffer, f32 x, f32 y) {
-    u32 ix = (u32)(x + 0.5f);
-    u32 iy = (u32)(y + 0.5f);
-    
-    if (ix >= buffer->width) ix = buffer->width - 1;
-    if (iy >= buffer->height) iy = buffer->height - 1;
-    
-    return mp_image_get_pixel(buffer, ix, iy);
-}
 
 static mp_pixel mp_sample_bilinear(const mp_image_buffer* buffer, f32 x, f32 y) {
     u32 x0 = (u32)x;
@@ -190,27 +230,42 @@ mp_result mp_op_resize_ex(mp_image* image, u32 new_width, u32 new_height,
     
     f32 x_ratio = (f32)old_buffer->width / new_width;
     f32 y_ratio = (f32)old_buffer->height / new_height;
+    u32 bpp = old_buffer->bpp;
+    u8* restrict src_data = old_buffer->data;
+    u8* restrict dst_data = new_buffer->data;
     
+    /* Extreme optimization: Direct pointer access in resize loop / 극한 최적화: 크기 조정 루프 내 직접 포인터 액세스 */
     for (u32 y = 0; y < new_height; y++) {
+        u8* restrict dst_row = dst_data + y * new_buffer->stride;
+        f32 src_y = y * y_ratio;
+        u32 sy = (u32)src_y;
+        if (sy >= old_buffer->height) sy = old_buffer->height - 1;
+        u8* restrict src_row = src_data + sy * old_buffer->stride;
+
         for (u32 x = 0; x < new_width; x++) {
             f32 src_x = x * x_ratio;
-            f32 src_y = y * y_ratio;
-            
-            mp_pixel pixel;
-            
-            switch (algorithm) {
-                case MP_RESIZE_NEAREST:
-                    pixel = mp_sample_nearest(old_buffer, src_x, src_y);
-                    break;
-                case MP_RESIZE_BILINEAR:
-                    pixel = mp_sample_bilinear(old_buffer, src_x, src_y);
-                    break;
-                default:
-                    pixel = mp_sample_bilinear(old_buffer, src_x, src_y);
-                    break;
+            u32 sx = (u32)src_x;
+            if (sx >= old_buffer->width) sx = old_buffer->width - 1;
+
+            if (algorithm == MP_RESIZE_NEAREST) {
+                u8* sp = src_row + sx * bpp;
+                if (bpp == 3) {
+                    dst_row[0] = sp[0]; dst_row[1] = sp[1]; dst_row[2] = sp[2];
+                } else if (bpp == 4) {
+                    *((u32*)dst_row) = *((u32*)sp);
+                } else {
+                    memcpy(dst_row, sp, bpp);
+                }
+            } else {
+                /* Bi-linear sampling fallback for complexity / 복잡성을 고려한 바이리니어 샘플링 폴백 */
+                mp_pixel pixel = mp_sample_bilinear(old_buffer, src_x, src_y);
+                if (bpp == 3) {
+                    dst_row[0] = pixel.r; dst_row[1] = pixel.g; dst_row[2] = pixel.b;
+                } else {
+                    dst_row[0] = pixel.r; dst_row[1] = pixel.g; dst_row[2] = pixel.b; dst_row[3] = pixel.a;
+                }
             }
-            
-            mp_image_set_pixel(new_buffer, x, y, pixel);
+            dst_row += bpp;
         }
     }
     

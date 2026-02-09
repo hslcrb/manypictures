@@ -11,10 +11,6 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-/* RGB to grayscale using luminosity method */
-static u8 mp_rgb_to_gray(u8 r, u8 g, u8 b) {
-    return (u8)((r * 299 + g * 587 + b * 114) / 1000);
-}
 
 mp_result mp_op_to_grayscale(mp_image* image) {
     if (!image || !image->buffer) {
@@ -22,18 +18,33 @@ mp_result mp_op_to_grayscale(mp_image* image) {
     }
     
     mp_image_buffer* buffer = image->buffer;
+    u8* restrict data = buffer->data;
+    u32 width = buffer->width;
+    u32 height = buffer->height;
+    u32 bpp = buffer->bpp;
+    u32 stride = buffer->stride;
     
-    for (u32 y = 0; y < buffer->height; y++) {
-        for (u32 x = 0; x < buffer->width; x++) {
-            mp_pixel pixel = mp_image_get_pixel(buffer, x, y);
-            u8 gray = mp_rgb_to_gray(pixel.r, pixel.g, pixel.b);
-            pixel.r = pixel.g = pixel.b = gray;
-            mp_image_set_pixel(buffer, x, y, pixel);
+    /* Extreme optimization: Fixed-point + 8x Unrolling / 극한 최적화: 고정 소수점 + 8배 언롤링 */
+    for (u32 y = 0; y < height; y++) {
+        u8* restrict p = data + y * stride;
+        u32 x = 0;
+        for (; x <= width - 8; x += 8) {
+            #define GS_STEP { \
+                u32 g = (p[0] * 77 + p[1] * 150 + p[2] * 29) >> 8; \
+                p[0] = p[1] = p[2] = (u8)g; p += bpp; \
+            }
+            GS_STEP GS_STEP GS_STEP GS_STEP
+            GS_STEP GS_STEP GS_STEP GS_STEP
+            #undef GS_STEP
+        }
+        for (; x < width; x++) {
+            u32 g = (p[0] * 77 + p[1] * 150 + p[2] * 29) >> 8;
+            p[0] = p[1] = p[2] = (u8)g; p += bpp;
         }
     }
     
     image->modified = MP_TRUE;
-    mp_image_record_history(image, MP_OP_GRAYSCALE, "Converted to Grayscale");
+    mp_image_record_history(image, MP_OP_GRAYSCALE, "Converted to Grayscale (Monster Optimized)");
     return MP_SUCCESS;
 }
 
@@ -43,19 +54,24 @@ mp_result mp_op_invert(mp_image* image) {
     }
     
     mp_image_buffer* buffer = image->buffer;
+    u8* restrict p = buffer->data;
+    size_t count = (size_t)buffer->width * buffer->height;
+    u32 bpp = buffer->bpp;
     
-    for (u32 y = 0; y < buffer->height; y++) {
-        for (u32 x = 0; x < buffer->width; x++) {
-            mp_pixel pixel = mp_image_get_pixel(buffer, x, y);
-            pixel.r = 255 - pixel.r;
-            pixel.g = 255 - pixel.g;
-            pixel.b = 255 - pixel.b;
-            mp_image_set_pixel(buffer, x, y, pixel);
-        }
+    /* Extreme optimization: Pointer arithmetic + 8x Unrolling / 극한 최적화: 포인터 연산 + 8배 언롤링 */
+    size_t i = 0;
+    for (; i <= count - 8; i += 8) {
+        #define INV_STEP { p[0] = ~p[0]; p[1] = ~p[1]; p[2] = ~p[2]; p += bpp; }
+        INV_STEP INV_STEP INV_STEP INV_STEP
+        INV_STEP INV_STEP INV_STEP INV_STEP
+        #undef INV_STEP
+    }
+    for (; i < count; i++) {
+        p[0] = ~p[0]; p[1] = ~p[1]; p[2] = ~p[2]; p += bpp;
     }
     
     image->modified = MP_TRUE;
-    mp_image_record_history(image, MP_OP_INVERT, "Inverted Colors");
+    mp_image_record_history(image, MP_OP_INVERT, "Inverted Colors (Monster Optimized)");
     return MP_SUCCESS;
 }
 
@@ -134,26 +150,34 @@ mp_result mp_op_brightness(mp_image* image, i32 value) {
         return MP_ERROR_INVALID_PARAM;
     }
     
-    mp_image_buffer* buffer = image->buffer;
+    /* Precompute LUT / LUT 사전 계산 */
+    u8 lut[256];
+    for (int i = 0; i < 256; i++) {
+        i32 v = i + value;
+        lut[i] = (u8)(v < 0 ? 0 : (v > 255 ? 255 : v));
+    }
     
-    for (u32 y = 0; y < buffer->height; y++) {
-        for (u32 x = 0; x < buffer->width; x++) {
-            mp_pixel pixel = mp_image_get_pixel(buffer, x, y);
-            
-            i32 r = pixel.r + value;
-            i32 g = pixel.g + value;
-            i32 b = pixel.b + value;
-            
-            pixel.r = r < 0 ? 0 : (r > 255 ? 255 : r);
-            pixel.g = g < 0 ? 0 : (g > 255 ? 255 : g);
-            pixel.b = b < 0 ? 0 : (b > 255 ? 255 : b);
-            
-            mp_image_set_pixel(buffer, x, y, pixel);
-        }
+    mp_image_buffer* buffer = image->buffer;
+    u8* restrict p = buffer->data;
+    size_t count = (size_t)buffer->width * buffer->height;
+    u32 bpp = buffer->bpp;
+    
+    /* Extreme optimization: LUT + 16x Unrolling / 극한 최적화: LUT + 16배 언롤링 */
+    size_t i = 0;
+    for (; i <= count - 16; i += 16) {
+        #define BR_LUT_STEP { p[0] = lut[p[0]]; p[1] = lut[p[1]]; p[2] = lut[p[2]]; p += bpp; }
+        BR_LUT_STEP BR_LUT_STEP BR_LUT_STEP BR_LUT_STEP
+        BR_LUT_STEP BR_LUT_STEP BR_LUT_STEP BR_LUT_STEP
+        BR_LUT_STEP BR_LUT_STEP BR_LUT_STEP BR_LUT_STEP
+        BR_LUT_STEP BR_LUT_STEP BR_LUT_STEP BR_LUT_STEP
+        #undef BR_LUT_STEP
+    }
+    for (; i < count; i++) {
+        p[0] = lut[p[0]]; p[1] = lut[p[1]]; p[2] = lut[p[2]]; p += bpp;
     }
     
     image->modified = MP_TRUE;
-    mp_image_record_history(image, MP_OP_BRIGHTNESS, "Adjusted Brightness");
+    mp_image_record_history(image, MP_OP_BRIGHTNESS, "Adjusted Brightness (Monster LUT Optimized)");
     return MP_SUCCESS;
 }
 
@@ -162,27 +186,36 @@ mp_result mp_op_contrast(mp_image* image, f32 value) {
         return MP_ERROR_INVALID_PARAM;
     }
     
-    mp_image_buffer* buffer = image->buffer;
     f32 factor = (259.0f * (value * 255.0f + 255.0f)) / (255.0f * (259.0f - value * 255.0f));
     
-    for (u32 y = 0; y < buffer->height; y++) {
-        for (u32 x = 0; x < buffer->width; x++) {
-            mp_pixel pixel = mp_image_get_pixel(buffer, x, y);
-            
-            i32 r = (i32)(factor * (pixel.r - 128) + 128);
-            i32 g = (i32)(factor * (pixel.g - 128) + 128);
-            i32 b = (i32)(factor * (pixel.b - 128) + 128);
-            
-            pixel.r = r < 0 ? 0 : (r > 255 ? 255 : r);
-            pixel.g = g < 0 ? 0 : (g > 255 ? 255 : g);
-            pixel.b = b < 0 ? 0 : (b > 255 ? 255 : b);
-            
-            mp_image_set_pixel(buffer, x, y, pixel);
-        }
+    /* Precompute LUT / LUT 사전 계산 */
+    u8 lut[256];
+    for (int i = 0; i < 256; i++) {
+        i32 v = (i32)(factor * (i - 128) + 128);
+        lut[i] = (u8)(v < 0 ? 0 : (v > 255 ? 255 : v));
+    }
+    
+    mp_image_buffer* buffer = image->buffer;
+    u8* restrict p = buffer->data;
+    size_t count = (size_t)buffer->width * buffer->height;
+    u32 bpp = buffer->bpp;
+    
+    /* Extreme optimization: LUT + 16x Unrolling / 극한 최적화: LUT + 16배 언롤링 */
+    size_t i = 0;
+    for (; i <= count - 16; i += 16) {
+        #define CT_LUT_STEP { p[0] = lut[p[0]]; p[1] = lut[p[1]]; p[2] = lut[p[2]]; p += bpp; }
+        CT_LUT_STEP CT_LUT_STEP CT_LUT_STEP CT_LUT_STEP
+        CT_LUT_STEP CT_LUT_STEP CT_LUT_STEP CT_LUT_STEP
+        CT_LUT_STEP CT_LUT_STEP CT_LUT_STEP CT_LUT_STEP
+        CT_LUT_STEP CT_LUT_STEP CT_LUT_STEP CT_LUT_STEP
+        #undef CT_LUT_STEP
+    }
+    for (; i < count; i++) {
+        p[0] = lut[p[0]]; p[1] = lut[p[1]]; p[2] = lut[p[2]]; p += bpp;
     }
     
     image->modified = MP_TRUE;
-    mp_image_record_history(image, MP_OP_CONTRAST, "Adjusted Contrast");
+    mp_image_record_history(image, MP_OP_CONTRAST, "Adjusted Contrast (Monster LUT Optimized)");
     return MP_SUCCESS;
 }
 
@@ -274,58 +307,76 @@ void mp_colorization_predict(u8 gray, u8 context[8], u8* r, u8* g, u8* b) {
 mp_result mp_op_to_color(mp_image* image) {
     if (!image || !image->buffer) return MP_ERROR_INVALID_PARAM;
     
-    mp_fast_printf("Starting Spectral Colorization (Monster v2.2)... / 스펙트럼 컬러화 시작 (Monster v2.2)...\n");
-    
     mp_image_buffer* buffer = image->buffer;
     u32 w = buffer->width, h = buffer->height;
+    u32 bpp = buffer->bpp;
+    u32 stride = buffer->stride;
+    u8* restrict data = buffer->data;
+    
+    mp_fast_printf("Starting Extreme Spectral Colorization (Monster v2.5)... / 극한 스펙트럼 컬러화 시작 (Monster v2.5)...\n");
     
     for (u32 y = 0; y < h; y++) {
+        u8* restrict row = data + y * stride;
         for (u32 x = 0; x < w; x++) {
-            mp_pixel p = mp_image_get_pixel(buffer, x, y);
-            u8 gray = mp_rgb_to_gray(p.r, p.g, p.b);
+            u8 gray = (u8)((row[0] * 77 + row[1] * 150 + row[2] * 29) >> 8);
             u8 ctx[8];
             
-            static const i8 dx[] = {-1, 0, 1, -1, 1, -1, 0, 1};
-            static const i8 dy[] = {-1, -1, -1, 0, 0, 1, 1, 1};
-            
-            for (int i = 0; i < 8; i++) {
-                i32 nx = (i32)x + dx[i], ny = (i32)y + dy[i];
-                if (nx >= 0 && nx < (i32)w && ny >= 0 && ny < (i32)h) {
-                    mp_pixel cp = mp_image_get_pixel(buffer, (u32)nx, (u32)ny);
-                    ctx[i] = mp_rgb_to_gray(cp.r, cp.g, cp.b);
-                } else ctx[i] = gray;
+            /* Neighborhood sampling via pointer offsets / 포인터 오프셋을 통한 주변부 샘플링 */
+            int ci = 0;
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dx = -1; dx <= 1; dx++) {
+                    if (dx == 0 && dy == 0) continue;
+                    i32 nx = (i32)x + dx, ny = (i32)y + dy;
+                    if (__builtin_expect(nx >= 0 && nx < (i32)w && ny >= 0 && ny < (i32)h, 1)) {
+                        u8* np = data + ny * stride + nx * bpp;
+                        ctx[ci++] = (u8)((np[0] * 77 + np[1] * 150 + np[2] * 29) >> 8);
+                    } else {
+                        ctx[ci++] = gray;
+                    }
+                }
             }
             
             u8 r, g, b;
             mp_colorization_predict(gray, ctx, &r, &g, &b);
-            p.r = r; p.g = g; p.b = b;
-            mp_image_set_pixel(buffer, x, y, p);
+            row[0] = r; row[1] = g; row[2] = b;
+            row += bpp;
         }
     }
     
     image->modified = MP_TRUE;
-    mp_image_record_history(image, MP_OP_COLORIZE, "Applied Spectral Colorization (v2.2)");
+    mp_image_record_history(image, MP_OP_COLORIZE, "Applied Spectral Colorization (Extreme Optimized)");
     return MP_SUCCESS;
 }
 
 
 mp_result mp_op_invert_grayscale(mp_image* image) {
     if (!image || !image->buffer) return MP_ERROR_INVALID_PARAM;
-    mp_image_buffer* buf = image->buffer;
     
-    /* Optimized single-pass invert and grayscale using integer weights */
-    for (u32 y = 0; y < buf->height; y++) {
-        for (u32 x = 0; x < buf->width; x++) {
-            mp_pixel p = mp_image_get_pixel(buf, x, y);
-            /* Perform inversion then grayscale in fixed-point */
-            u8 ir = 255 - p.r, ig = 255 - p.g, ib = 255 - p.b;
-            u8 gray = (u8)((ir * 299 + ig * 587 + ib * 114) / 1000);
-            p.r = p.g = p.b = gray;
-            mp_image_set_pixel(buf, x, y, p);
+    mp_image_buffer* buffer = image->buffer;
+    u8* restrict p = buffer->data;
+    size_t count = (size_t)buffer->width * buffer->height;
+    u32 bpp = buffer->bpp;
+    
+    /* Extreme optimization: Fixed-point + Unrolling + Direct manipulation / 극한 최적화: 고정 소수점 + 언롤링 + 직접 조작 */
+    size_t i = 0;
+    for (; i <= count - 8; i += 8) {
+        #define IGS_STEP { \
+            u8 ir = 255 - p[0], ig = 255 - p[1], ib = 255 - p[2]; \
+            u32 gray = (ir * 77 + ig * 150 + ib * 29) >> 8; \
+            p[0] = p[1] = p[2] = (u8)gray; p += bpp; \
         }
+        IGS_STEP IGS_STEP IGS_STEP IGS_STEP
+        IGS_STEP IGS_STEP IGS_STEP IGS_STEP
+        #undef IGS_STEP
     }
+    for (; i < count; i++) {
+        u8 ir = 255 - p[0], ig = 255 - p[1], ib = 255 - p[2];
+        u32 gray = (ir * 77 + ig * 150 + ib * 29) >> 8;
+        p[0] = p[1] = p[2] = (u8)gray; p += bpp;
+    }
+    
     image->modified = MP_TRUE;
-    mp_image_record_history(image, MP_OP_INVERT_GRAYSCALE, "Inverted and Grayscaled");
+    mp_image_record_history(image, MP_OP_INVERT_GRAYSCALE, "Inverted and Grayscaled (Monster Optimized)");
     return MP_SUCCESS;
 }
 

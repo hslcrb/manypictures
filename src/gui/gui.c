@@ -392,14 +392,25 @@ static void mp_gui_update_image_surface(mp_application* app) {
     
     /* CRITICAL FIX: Handle stride for large images to prevent overlapping/stripes */
     /* 대형 이미지의 스트라이드를 처리하여 중첩/줄무늬 현상 방지 */
+    /* Extreme optimization: Unrolling + 32-bit writes / 극한 최적화: 언롤링 + 32비트 쓰기 */
     for (int y = 0; y < h; y++) {
-        unsigned char* row = data + y * stride;
-        unsigned char* src_row = src + y * w * 3;
-        for (int x = 0; x < w; x++) {
-            row[x*4 + 0] = src_row[x*3 + 2]; /* B */
-            row[x*4 + 1] = src_row[x*3 + 1]; /* G */
-            row[x*4 + 2] = src_row[x*3 + 0]; /* R */
-            row[x*4 + 3] = 255;               /* A */
+        u8* restrict row = data + y * stride;
+        u8* restrict src_row = src + y * w * 3;
+        int x = 0;
+        
+        #pragma GCC unroll 4
+        for (; x <= w - 4; x += 4) {
+            /* Use 32-bit writes to minimize bus traffic / 버스 트래픽 최소화를 위해 32비트 쓰기 사용 */
+            /* ARGB Little Endian: 0xAARRGGBB -> Memory [0]=B, [1]=G, [2]=R, [3]=A */
+            *((u32*)(row + 0)) = (0xFFU << 24) | (src_row[0] << 16) | (src_row[1] << 8) | src_row[2];
+            *((u32*)(row + 4)) = (0xFFU << 24) | (src_row[3] << 16) | (src_row[4] << 8) | src_row[5];
+            *((u32*)(row + 8)) = (0xFFU << 24) | (src_row[6] << 16) | (src_row[7] << 8) | src_row[8];
+            *((u32*)(row + 12)) = (0xFFU << 24) | (src_row[9] << 16) | (src_row[10] << 8) | src_row[11];
+            row += 16; src_row += 12;
+        }
+        for (; x < w; x++) {
+            *((u32*)row) = (0xFFU << 24) | (src_row[0] << 16) | (src_row[1] << 8) | src_row[2];
+            row += 4; src_row += 3;
         }
     }
     
