@@ -297,20 +297,15 @@ typedef struct {
     mp_operation_type op_type; /* or custom ID */
 } mp_gui_button;
 
-#define MP_BTN_OPEN_FILE  100
-#define MP_BTN_LANG_TOGGLE 101
-#define MP_BTN_ZOOM_IN     102
-#define MP_BTN_ZOOM_OUT    103
-#define MP_BTN_ZOOM_RESET  104
 
 static const mp_gui_button g_buttons[] = {
-    {"Open File", "파일 열기", 0, MP_BTN_OPEN_FILE},
-    {"Language", "한/영", 50, MP_BTN_LANG_TOGGLE},
+    {"Open File", "파일 열기", 0, MP_OP_OPEN_DIALOG},
+    {"Language", "한/영", 50, MP_OP_LANG_TOGGLE},
     {"Undo", "실행 취소", 100, MP_OP_UNDO},
     {"Redo", "다시 실행", 140, MP_OP_REDO},
-    {"Zoom In", "확대", 200, MP_BTN_ZOOM_IN},
-    {"Zoom Out", "축소", 240, MP_BTN_ZOOM_OUT},
-    {"Reset", "초기화", 280, MP_BTN_ZOOM_RESET},
+    {"Zoom In", "확대", 200, MP_OP_ZOOM_IN},
+    {"Zoom Out", "축소", 240, MP_OP_ZOOM_OUT},
+    {"Reset", "초기화", 280, MP_OP_ZOOM_RESET},
     {"Grayscale", "흑백 변환", 340, MP_OP_GRAYSCALE},
     {"Colorize", "컬러화", 380, MP_OP_COLORIZE},
     {"Invert", "색상 반전", 420, MP_OP_INVERT},
@@ -584,10 +579,10 @@ void mp_gui_run(mp_application* app) {
                             int btn_y = 110 + g_buttons[i].y_offset;
                             if (y >= btn_y && y <= btn_y + 40) {
                                 /* Clicked button i */
-                                if (g_buttons[i].op_type == MP_BTN_OPEN_FILE) {
+                                if (g_buttons[i].op_type == MP_OP_OPEN_DIALOG) {
                                     /* Invoke System File Dialog / 시스템 파일 대화 상자 호출 */
                                     mp_gui_open_file_dialog_system(app);
-                                } else if (g_buttons[i].op_type == MP_BTN_LANG_TOGGLE) {
+                                } else if (g_buttons[i].op_type == MP_OP_LANG_TOGGLE) {
                                     app->language_mode = (app->language_mode + 1) % 3;
                                     mp_fast_printf("[GUI] Language switched to mode %d / 언어 모드 %d로 전환됨\n", app->language_mode, app->language_mode);
                                     mp_gui_request_repaint(app);
@@ -859,7 +854,8 @@ mp_result mp_app_apply_operation(mp_application* app, mp_operation_type op_type)
     
     mp_result result = MP_SUCCESS;
     
-    if (op_type != MP_BTN_LANG_TOGGLE && op_type != MP_BTN_OPEN_FILE) {
+    if (op_type != MP_OP_LANG_TOGGLE && op_type != MP_OP_OPEN_DIALOG &&
+        op_type != MP_OP_ZOOM_IN && op_type != MP_OP_ZOOM_OUT && op_type != MP_OP_ZOOM_RESET) {
         mp_app_push_undo(app);
     }
     
@@ -902,19 +898,19 @@ mp_result mp_app_apply_operation(mp_application* app, mp_operation_type op_type)
             mp_app_redo(app);
             return MP_SUCCESS;
             
-        case MP_BTN_ZOOM_IN:
+        case MP_OP_ZOOM_IN:
             app->fit_to_window = MP_FALSE;
             app->zoom_level *= 1.2f;
             if (app->zoom_level > 10.0f) app->zoom_level = 10.0f;
             return MP_SUCCESS;
             
-        case MP_BTN_ZOOM_OUT:
+        case MP_OP_ZOOM_OUT:
             app->fit_to_window = MP_FALSE;
             app->zoom_level /= 1.2f;
             if (app->zoom_level < 0.01f) app->zoom_level = 0.01f;
             return MP_SUCCESS;
             
-        case MP_BTN_ZOOM_RESET:
+        case MP_OP_ZOOM_RESET:
             app->fit_to_window = MP_TRUE;
             app->zoom_level = 1.0f;
             return MP_SUCCESS;
