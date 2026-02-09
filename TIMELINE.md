@@ -81,6 +81,11 @@ This software has reached "Monster" grade completion, proving structural aesthet
 - [x] 전역 지침 및 한영 병기 최종 정착 / Final Branding & Bilingual Fixation
     - [x] 전 소스 코드(`src/`) 한영 병기 주석 전수 감사 및 수정 / Audit & fix all KR/EN comments in `src/`
     - [x] `recycle_trash/` 폴더 내 'Trash Archive' 수립 / Establish 'Trash Archive' in `recycle_trash/`
+### [2026-02-10 01:21 KST] [MUHAN_RELOOP: DOMINATED] PNG Adam7 Interlacing Support
+- [x] **Adam7 Core Implementation**: Full 7-pass de-interlacing algorithm in pure C. / **Adam7 코어 구현**: 순수 C 언어로 7패스 디인터레이싱 알고리즘 완수.
+- [x] **Monster Compatibility**: Multi-resolution PNG support verified (4000px+ resolution). / **Monster급 호환성**: 다중 해상도 PNG 지원 검증 (4000px+ 해상도).
+- [x] **[MUHAN_RELOOP: DOMINATED]**: "Interlaced PNGs are not supported" error eliminated forever. / **[무한 리루프: 제압]**: "인터레이스 PNG 미지원" 에러 영구 제거.
+
 ### [2026-02-10 00:10 KST] [MUHAN_RELOOP: DOMINATED] Supreme UI/UX v3.0 Engineering
 - [x] Radical Aesthetics Upgrade: Rounded glassmorphism buttons & premium gradients / 급진적 미학 업그레이드: 라운드 글래스모피즘 버튼 및 프리미엄 그라데이션
 - [x] Toolkit Section Re-grouping: Logical Sectioning with refined typography / 도구 상자 섹션 재그룹화: 정제된 타이포그래피와 함께 논리적 세분화
