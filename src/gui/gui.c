@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include "gui.h"
 #include "../core/memory.h"
 #include "../core/image.h"
@@ -15,6 +16,30 @@
 
 static Display* g_display = NULL;
 static int g_screen = 0;
+static char g_system_font[256] = "Sans"; /* Default fallback / 기본 대체 폰트 */
+
+/* Dynamic Font Detection / 동적 폰트 감지 */
+static void mp_get_system_font_name(void) {
+    FILE* fp = popen("fc-match -f \"%{family}\" :lang=ko", "r");
+    if (fp) {
+        if (fgets(g_system_font, sizeof(g_system_font), fp)) {
+            /* Remove newline / 개행 제거 */
+            size_t len = strlen(g_system_font);
+            if (len > 0 && g_system_font[len-1] == '\n') {
+                g_system_font[len-1] = '\0';
+            }
+            /* If multiple families returned (comma separated), take first / 여러 패밀리가 반환된 경우 첫 번째 사용 */
+            char* comma = strchr(g_system_font, ',');
+            if (comma) *comma = '\0';
+            
+            mp_fast_printf("[GUI] Detected System Font: %s\n", g_system_font);
+        }
+        pclose(fp);
+    } else {
+        strcpy(g_system_font, "Sans"); /* "Sans" usually maps to a valid CJK font on Linux */
+        mp_fast_printf("[GUI] Font detection failed. Using fallback: Sans\n");
+    }
+}
 
 mp_result mp_gui_init(void) {
     g_display = XOpenDisplay(NULL);
@@ -23,6 +48,9 @@ mp_result mp_gui_init(void) {
         return MP_ERROR_IO;
     }
     g_screen = DefaultScreen(g_display);
+    
+    mp_get_system_font_name(); /* Detect font / 폰트 감지 */
+    
     mp_fast_printf("GUI initialized (X11 Connection Established) / GUI 초기화됨 (X11 연결 수립)\n");
     return MP_SUCCESS;
 }
@@ -174,7 +202,15 @@ static void mp_gui_draw_sidebar(cairo_t* cr, int h, mp_language_mode mode) {
     cairo_set_source_rgb(cr, 0.8, 0.8, 1.0);
     cairo_set_font_size(cr, 18);
     cairo_move_to(cr, 20, 40);
-    cairo_show_text(cr, (mode == MP_LANG_KR) ? "기능" : "Operations");
+    
+    /* Title Rendering / 타이틀 렌더링 */
+    if (mode == MP_LANG_KR) {
+        cairo_select_font_face(cr, g_system_font, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+        cairo_show_text(cr, "기능");
+        cairo_select_font_face(cr, "Inter", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD); /* Reset */
+    } else {
+        cairo_show_text(cr, "Operations");
+    }
     
     /* Subtle separators / 미묘한 구분선 */
     cairo_set_line_width(cr, 1.0);
@@ -196,15 +232,15 @@ static void mp_gui_draw_sidebar(cairo_t* cr, int h, mp_language_mode mode) {
         cairo_move_to(cr, 40, y + 25);
         
         if (mode == MP_LANG_EN) {
+            cairo_select_font_face(cr, "Inter", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
             cairo_show_text(cr, g_buttons[i].label_en);
         } else if (mode == MP_LANG_KR) {
-            cairo_select_font_face(cr, "NanumGothic", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD); /* Fallback font */
+            cairo_select_font_face(cr, g_system_font, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD); /* Use detected font */
             cairo_show_text(cr, g_buttons[i].label_kr);
             cairo_select_font_face(cr, "Inter", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD); /* Reset */
         } else {
-            /* Bilingual: Show English (user prefers EN usually for dev tools, adding KR tooltip-like approach involves complexity, sticking to EN/KR toggle is cleaner) */
-            /* User requested "한영전환" (Toggle), so let's display based on current mode. But for bilingual mode, maybe show EN/KR? */
-            /* Let's show EN by default in mixed mode for clean GUI, toggle will switch to KR */
+            /* Bilingual Mode / 이중 언어 모드 */
+            /* Display EN (space) KR or just EN depending on space. Let's try EN for now to avoid crowding, user can toggle */
              cairo_show_text(cr, g_buttons[i].label_en);
         }
     }
