@@ -1,0 +1,53 @@
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+
+# Compiled binary
+manypictures
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Test files
+test_images/
+*.bmp
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.tiff
+*.webp
+
+# Documentation
+docs/html/
+docs/latex/
+
+# Temporary files
+*.tmp
+*.log
+core
+vgcore.*
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
+# Backup files
+*.bak
+*.backup
